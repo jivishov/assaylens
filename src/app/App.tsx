@@ -301,7 +301,7 @@ export function App() {
               ))}
             </div>
             <div>
-              <strong>AssayLens</strong>
+              <strong>Assay Lens</strong>
               <span>v0.2.0</span>
             </div>
           </div>
