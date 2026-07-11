@@ -8,6 +8,11 @@ export type SpotMapCell = {
   col: number;
   role: SpotRole;
   groupId: string;
+  conditionId?: string;
+  normalizationGroupId?: string;
+  biologicalReplicateId?: string;
+  technicalReplicateId?: string;
+  relativeInoculum?: number;
   biologicalReplicate?: number;
   technicalReplicate?: number;
   dilutionIndex?: number;
@@ -46,6 +51,10 @@ export function createEmptySpotMap(rows = 4, columns = 6): SpotMapCell[] {
         col,
         role: "unused",
         groupId: "",
+        conditionId: "",
+        normalizationGroupId: "",
+        biologicalReplicateId: "",
+        technicalReplicateId: "",
         notes: ""
       });
     }

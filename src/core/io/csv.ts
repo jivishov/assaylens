@@ -1,11 +1,11 @@
 import type { MicResult, SpotAnalysis, SpotDilutionSummary, WellAnalysis, WellFeature } from "../types";
-import { isWellRole, roleAcceptsAssignmentMetadata, roleAcceptsConcentration, type PlateMapCell } from "../plateMap/plateMapTypes";
+import { isWellRole, roleAcceptsAssignmentMetadata, roleAcceptsConcentration, roleAcceptsNormalizationGroup, type PlateMapCell } from "../plateMap/plateMapTypes";
 import type { RoiFeature } from "../roi/roiTypes";
 import type { SpotMapCell } from "../assays/agarSpot/spotMapTypes";
 
 export function plateMapToCsv(plateMap: PlateMapCell[]): string {
   return rowsToCsv([
-    ["well", "row", "col", "role", "compound_id", "sample_id", "concentration", "unit", "notes"],
+    ["well", "row", "col", "role", "compound_id", "sample_id", "concentration", "unit", "normalization_group_id", "biological_replicate_id", "technical_replicate_id", "uses_vehicle_control", "notes"],
     ...plateMap.map((cell) => [
       cell.well,
       String(cell.row + 1),
@@ -15,6 +15,10 @@ export function plateMapToCsv(plateMap: PlateMapCell[]): string {
       cell.sampleId,
       cell.concentration == null ? "" : String(cell.concentration),
       cell.unit,
+      cell.normalizationGroupId,
+      cell.biologicalReplicateId,
+      cell.technicalReplicateId,
+      String(Boolean(cell.usesVehicleControl)),
       cell.notes ?? ""
     ])
   ]);
@@ -57,6 +61,7 @@ export function parsePlateMapCsv(csv: string, fallback: PlateMapCell[]): PlateMa
     const nextRole = role && isWellRole(role) ? role : next[index].role;
     const concentrationRaw = row[getIndex("concentration")]?.trim();
     const acceptsMetadata = roleAcceptsAssignmentMetadata(nextRole);
+    const acceptsGroup = roleAcceptsNormalizationGroup(nextRole);
     const acceptsConcentration = roleAcceptsConcentration(nextRole);
     const concentration = concentrationRaw && acceptsConcentration ? Number(concentrationRaw) : undefined;
     if (concentrationRaw && acceptsConcentration && !Number.isFinite(concentration)) {
@@ -69,6 +74,10 @@ export function parsePlateMapCsv(csv: string, fallback: PlateMapCell[]): PlateMa
       sampleId: acceptsMetadata ? row[getIndex("sample_id")]?.trim() ?? next[index].sampleId : "",
       concentration,
       unit: acceptsMetadata ? row[getIndex("unit")]?.trim() ?? next[index].unit : "",
+      normalizationGroupId: acceptsGroup ? row[getIndex("normalization_group_id")]?.trim() ?? next[index].normalizationGroupId : "",
+      biologicalReplicateId: nextRole === "sample" ? row[getIndex("biological_replicate_id")]?.trim() ?? next[index].biologicalReplicateId : "",
+      technicalReplicateId: nextRole === "sample" ? row[getIndex("technical_replicate_id")]?.trim() ?? next[index].technicalReplicateId : "",
+      usesVehicleControl: nextRole === "sample" ? /^true|1|yes$/i.test(row[getIndex("uses_vehicle_control")]?.trim() ?? "") : false,
       notes: row[getIndex("notes")]?.trim() ?? next[index].notes
     };
   }
@@ -88,14 +97,18 @@ export function featuresToCsv(features: WellFeature[]): string {
       "median_b",
       "orange_chromaticity",
       "yellow_orange_lab",
-      "pseudo_od_blue",
-      "pseudo_od_green_blue",
+      "log_blue_intensity_contrast",
+      "log_green_plus_blue_intensity_contrast",
       "selected_signal",
       "valid_pixel_fraction",
       "highlight_fraction",
       "dark_artifact_fraction",
       "clipped_fraction",
-      "partially_outside_image"
+      "partially_outside_image",
+      "candidate_pixels",
+      "valid_pixels",
+      "clipped_pixels",
+      "out_of_image_pixels"
     ],
     ...features.map((feature) => [
       feature.well,
@@ -114,14 +127,18 @@ export function featuresToCsv(features: WellFeature[]): string {
       numberCell(feature.qc.highlightFraction),
       numberCell(feature.qc.darkArtifactFraction),
       numberCell(feature.qc.clippedFraction),
-      String(feature.qc.partiallyOutsideImage)
+      String(feature.qc.partiallyOutsideImage),
+      String(feature.qc.candidatePixelCount ?? ""),
+      String(feature.qc.validPixelCount ?? ""),
+      String(feature.qc.clippedPixelCount ?? ""),
+      String(feature.qc.outOfImagePixelCount ?? "")
     ])
   ]);
 }
 
 export function wellAnalysisToCsv(wells: WellAnalysis[]): string {
   return rowsToCsv([
-    ["well", "role", "compound_id", "sample_id", "concentration", "unit", "signal", "viability", "inhibition", "qc_flags"],
+    ["well", "role", "compound_id", "sample_id", "concentration", "unit", "normalization_group_id", "biological_replicate_id", "technical_replicate_id", "signal", "relative_metabolic_activity_raw", "inhibition_raw", "display_rma_clamped", "qc_flags"],
     ...wells.map((well) => [
       well.well,
       well.map.role,
@@ -129,9 +146,13 @@ export function wellAnalysisToCsv(wells: WellAnalysis[]): string {
       well.map.sampleId,
       well.map.concentration == null ? "" : String(well.map.concentration),
       well.map.unit,
+      well.map.normalizationGroupId,
+      well.map.biologicalReplicateId,
+      well.map.technicalReplicateId,
       numberCell(well.signal),
-      numberCell(well.viability),
-      numberCell(well.inhibition),
+      numberCell(well.relativeMetabolicActivityRaw ?? well.viability),
+      numberCell(well.inhibitionRaw ?? well.inhibition),
+      numberCell(well.displayRma ?? Math.max(0, Math.min(1, well.viability))),
       well.qcFlags.join(";")
     ])
   ]);
@@ -139,7 +160,7 @@ export function wellAnalysisToCsv(wells: WellAnalysis[]): string {
 
 export function micResultsToCsv(results: MicResult[]): string {
   return rowsToCsv([
-    ["compound_id", "sample_id", "unit", "threshold", "observed_mic", "isotonic_mic", "status", "warnings"],
+    ["compound_id", "sample_id", "unit", "threshold", "observed_image_endpoint", "model_assisted_endpoint", "status", "boundary", "biological_points_json", "model_adjusted_indices", "warnings"],
     ...results.map((result) => [
       result.compoundId,
       result.sampleId,
@@ -148,6 +169,9 @@ export function micResultsToCsv(results: MicResult[]): string {
       result.observedMicLabel,
       result.isotonicMicLabel,
       result.status,
+      result.endpointBoundary == null ? "" : String(result.endpointBoundary),
+      JSON.stringify(result.concentrations.map((point) => ({ concentration: point.concentration, rawRma: point.medianViability, biologicalCount: point.biologicalCount, technicalCount: point.technicalCount, biologicalIqr: point.biologicalIqr, biologicalValues: point.biologicalValues, exclusions: point.excludedWellIds, fittedRma: point.isotonicViability }))),
+      result.concentrations.map((point, index) => point.isotonicAdjusted ? index : -1).filter((index) => index >= 0).join(";"),
       result.warnings.join(";")
     ])
   ]);
@@ -208,6 +232,11 @@ export function spotMapToCsv(spotMap: SpotMapCell[]): string {
       "col",
       "role",
       "group_id",
+      "condition_id",
+      "normalization_group_id",
+      "biological_replicate_id",
+      "technical_replicate_id",
+      "relative_inoculum",
       "biological_replicate",
       "technical_replicate",
       "dilution_index",
@@ -219,6 +248,11 @@ export function spotMapToCsv(spotMap: SpotMapCell[]): string {
       String(cell.col + 1),
       cell.role,
       cell.groupId,
+      cell.conditionId ?? "",
+      cell.normalizationGroupId ?? "",
+      cell.biologicalReplicateId ?? "",
+      cell.technicalReplicateId ?? "",
+      cell.relativeInoculum == null ? "" : String(cell.relativeInoculum),
       cell.biologicalReplicate == null ? "" : String(cell.biologicalReplicate),
       cell.technicalReplicate == null ? "" : String(cell.technicalReplicate),
       cell.dilutionIndex == null ? "" : String(cell.dilutionIndex),
@@ -233,12 +267,26 @@ export function spotAnalysisToCsv(spots: SpotAnalysis[]): string {
       "roi_id",
       "role",
       "group_id",
+      "condition_id",
+      "normalization_group_id",
+      "biological_replicate_id",
+      "technical_replicate_id",
+      "relative_inoculum",
       "biological_replicate",
       "technical_replicate",
       "dilution_index",
       "gray_density",
       "background_corrected_density",
-      "density",
+      "endpoint_spot_signal",
+      "signed_integrated_contrast",
+      "local_background",
+      "local_noise",
+      "area_fraction",
+      "candidate_pixels",
+      "valid_pixels",
+      "out_of_image_pixels",
+      "annulus_candidate_pixels",
+      "annulus_valid_pixels",
       "valid",
       "qc_flags"
     ],
@@ -246,12 +294,26 @@ export function spotAnalysisToCsv(spots: SpotAnalysis[]): string {
       spot.roiId,
       spot.map.role,
       spot.map.groupId,
+      spot.map.conditionId ?? "",
+      spot.map.normalizationGroupId ?? "",
+      spot.map.biologicalReplicateId ?? "",
+      spot.map.technicalReplicateId ?? "",
+      spot.map.relativeInoculum == null ? "" : String(spot.map.relativeInoculum),
       spot.map.biologicalReplicate == null ? "" : String(spot.map.biologicalReplicate),
       spot.map.technicalReplicate == null ? "" : String(spot.map.technicalReplicate),
       spot.map.dilutionIndex == null ? "" : String(spot.map.dilutionIndex),
       numberCell(spot.feature.grayDensity),
       numberCell(spot.feature.backgroundCorrectedDensity),
       numberCell(spot.density),
+      numberCell(spot.signedIntegratedContrast ?? Number.NaN),
+      numberCell(spot.localBackground ?? Number.NaN),
+      numberCell(spot.localNoise ?? Number.NaN),
+      numberCell(spot.areaFraction ?? Number.NaN),
+      String(spot.candidatePixelCount ?? ""),
+      String(spot.validPixelCount ?? ""),
+      String(spot.outOfImagePixelCount ?? ""),
+      String(spot.annulusCandidatePixelCount ?? ""),
+      String(spot.annulusValidPixelCount ?? ""),
       String(spot.valid),
       spot.qcFlags.join(";")
     ])
@@ -265,12 +327,13 @@ export function spotDilutionSummariesToCsv(summaries: SpotDilutionSummary[]): st
       "group_id",
       "reference_control_group_id",
       "dilution_index",
+      "relative_inoculum",
       "n",
-      "mean_density",
+      "median_endpoint_spot_signal",
       "sd_density",
       "cv",
       "control_mean_density",
-      "relative_growth",
+      "relative_endpoint_spot_signal",
       "warnings"
     ],
     ...summaries.map((summary) => [
@@ -278,12 +341,13 @@ export function spotDilutionSummariesToCsv(summaries: SpotDilutionSummary[]): st
       summary.groupId,
       summary.referenceControlGroupId,
       String(summary.dilutionIndex),
+      summary.relativeInoculum == null ? "" : String(summary.relativeInoculum),
       String(summary.n),
-      numberCell(summary.meanDensity),
+      numberCell(summary.medianEndpointSpotSignal ?? summary.meanDensity),
       numberCell(summary.sdDensity),
       numberCell(summary.cv),
       numberCell(summary.controlMeanDensity),
-      numberCell(summary.relativeGrowth),
+      numberCell(summary.relativeEndpointSpotSignal ?? summary.relativeGrowth),
       summary.warnings.join(";")
     ])
   ]);

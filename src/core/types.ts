@@ -1,6 +1,7 @@
 import type { PlateMapCell } from "./plateMap/plateMapTypes";
 import type { AssayMode, RoiFeature, RoiQc } from "./roi/roiTypes";
 import type { SpotMapCell, SpotRole } from "./assays/agarSpot/spotMapTypes";
+import type { AssayProtocol, QcDecision, ResultProvenance } from "./science/contracts";
 
 export type { AssayMode } from "./roi/roiTypes";
 
@@ -70,6 +71,7 @@ export type WellFeature = {
   yellowOrangeLab: number;
   pseudoODBlue: number;
   pseudoODGreenBlue: number;
+  logIntensityContrastGreenBlue?: number;
   selectedSignal?: number;
   qc: WellMaskQC;
 };
@@ -115,6 +117,8 @@ export type GeometryState = {
   overlayRadiusFactor: number;
   wellAdjustments: Record<string, Point>;
   spotGrid?: SpotGridSettings;
+  agarOrientationConfirmed?: boolean;
+  confirmationFingerprint?: string;
 };
 
 export type SignalMetric =
@@ -125,6 +129,7 @@ export type SignalMetric =
   | "hsvS";
 
 export type NormalizationReference = {
+  normalizationGroupId?: string;
   growthSignal: number;
   blankSignal: number;
   direction: "increasing" | "decreasing";
@@ -138,6 +143,9 @@ export type WellAnalysis = {
   well: string;
   signal: number;
   viability: number;
+  relativeMetabolicActivityRaw?: number;
+  displayRma?: number;
+  inhibitionRaw?: number;
   inhibition: number;
   feature: WellFeature;
   map: PlateMapCell;
@@ -145,11 +153,12 @@ export type WellAnalysis = {
 };
 
 export type MicStatus =
+  | "qc_failed"
+  | "indeterminate_missing_data"
+  | "non_monotonic_indeterminate"
+  | "le_min_tested"
   | "in_range"
-  | ">max_tested"
-  | "<=min_tested"
-  | "indeterminate"
-  | "qc_failed";
+  | "gt_max_tested";
 
 export type MicResult = {
   compoundId: string;
@@ -166,7 +175,14 @@ export type MicResult = {
     medianViability: number;
     isotonicViability: number;
     replicateCount: number;
+    biologicalCount: number;
+    technicalCount: number;
+    biologicalIqr: number;
+    biologicalValues: number[];
+    excludedWellIds: string[];
+    isotonicAdjusted: boolean;
   }>;
+  endpointBoundary?: number;
   warnings: string[];
 };
 
@@ -180,10 +196,14 @@ export type XttAnalysisResult = {
   features: WellFeature[];
   wells: WellAnalysis[];
   normalization: NormalizationReference;
+  normalizationGroups?: NormalizationReference[];
   micResults: MicResult[];
   settings: AnalysisSettings;
   generatedAt: string;
   inputWarnings: InputWarningCode[];
+  protocolId?: string;
+  provenance?: ResultProvenance;
+  qcDecision?: QcDecision;
 };
 
 export type AgarSpotAnalysisSettings = {
@@ -204,6 +224,24 @@ export type SpotAnalysis = {
   col: number;
   role: SpotRole;
   density: number;
+  endpointSpotSignal?: number;
+  candidatePixelCount?: number;
+  validPixelCount?: number;
+  outOfImagePixelCount?: number;
+  annulusCandidatePixelCount?: number;
+  annulusValidPixelCount?: number;
+  localBackground?: number;
+  localNoise?: number;
+  areaPixels?: number;
+  areaFraction?: number;
+  meanSignedContrast?: number;
+  medianSignedContrast?: number;
+  signedIntegratedContrast?: number;
+  positiveIntegratedContrast?: number;
+  saturationFraction?: number;
+  boundaryContact?: boolean;
+  segmentationConfidence?: number;
+  maskProvenance?: string;
   feature: RoiFeature;
   map: SpotMapCell;
   valid: boolean;
@@ -215,12 +253,20 @@ export type SpotDilutionSummary = {
   groupId: string;
   referenceControlGroupId: string;
   dilutionIndex: number;
+  relativeInoculum?: number;
+  conditionId?: string;
   n: number;
   meanDensity: number;
+  medianEndpointSpotSignal?: number;
   sdDensity: number;
   cv: number;
   controlMeanDensity: number;
   relativeGrowth: number;
+  relativeEndpointSpotSignal?: number;
+  biologicalCount?: number;
+  technicalCount?: number;
+  biologicalIqr?: number;
+  biologicalValues?: number[];
   warnings: string[];
 };
 
@@ -243,6 +289,9 @@ export type AgarSpotAnalysisResult = {
   generatedAt: string;
   inputWarnings: InputWarningCode[];
   qc: AgarSpotQc;
+  protocolId?: string;
+  provenance?: ResultProvenance;
+  qcDecision?: QcDecision;
 };
 
 export type AnalysisResult = XttAnalysisResult | AgarSpotAnalysisResult;
@@ -250,13 +299,17 @@ export type AnalysisResult = XttAnalysisResult | AgarSpotAnalysisResult;
 export type ProjectImageMetadata = Omit<ImageMetadata, "name"> & { originalName?: string };
 
 export type ProjectFileBase = {
-  schemaVersion: 2;
+  schemaVersion: 3;
   app: "AssayLens";
   assayMode: AssayMode;
   imageMetadata?: ProjectImageMetadata;
   geometry: GeometryState;
   qcFlags: string[];
   inputWarnings: InputWarningCode[];
+  protocolSnapshot: AssayProtocol;
+  provenance: ResultProvenance;
+  qcDecision: QcDecision;
+  historicalAnalysisResult?: AnalysisResult;
 };
 
 export type XttProjectFile = ProjectFileBase & {

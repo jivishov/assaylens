@@ -22,8 +22,8 @@ export const SIGNAL_METRICS: Array<{
   },
   {
     id: "pseudoODGreenBlue",
-    label: "Pseudo OD green-blue",
-    description: "Pseudo OD using the green/blue ratio relative to blank controls."
+    label: "Log green-plus-blue intensity contrast",
+    description: "Diagnostic log intensity contrast using the green-plus-blue sum relative to blank controls."
   },
   {
     id: "hsvS",

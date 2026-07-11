@@ -139,15 +139,16 @@ function buildXttHtmlReport(params: {
     .join("");
 
   return htmlPage({
-    title: "AssayLens XTT 96-well MIC Report",
+    title: "AssayLens XTT Relative Metabolic Activity Report",
     body: `
-  <h1>AssayLens XTT 96-well MIC Report</h1>
+  <h1>AssayLens XTT Relative Metabolic Activity Report</h1>
   <div class="meta">Image: ${escapeHtml(params.imageName ?? "project import")} | Generated: ${escapeHtml(
     params.analysis.generatedAt
   )} | Metric: ${escapeHtml(params.analysis.normalization.selectedMetric)}</div>
-  <h2>MIC Summary</h2>
+  <p class="meta">Claim level: ${escapeHtml(params.analysis.provenance?.claimLevel ?? "exploratory")} | Protocol: ${escapeHtml(params.analysis.protocolId ?? "unrecorded")}. XTT image signal is not a direct viable-cell count.</p>
+  <h2>Observed image-derived endpoint summary</h2>
   <table>
-    <thead><tr><th>Compound</th><th>Sample</th><th>Observed MIC</th><th>Isotonic MIC</th><th>Status</th></tr></thead>
+    <thead><tr><th>Compound</th><th>Sample</th><th>Observed image endpoint</th><th>Model-assisted endpoint</th><th>Status</th></tr></thead>
     <tbody>${micRows}</tbody>
   </table>`
   });
@@ -162,27 +163,25 @@ function buildSpotHtmlReport(params: {
       (summary) =>
         `<tr><td>${escapeHtml(summary.role)}</td><td>${escapeHtml(summary.groupId)}</td><td>${escapeHtml(
           summary.referenceControlGroupId
-        )}</td><td>${summary.dilutionIndex}</td><td>${summary.n}</td><td>${numberCell(summary.meanDensity)}</td><td>${numberCell(summary.cv)}</td><td>${numberCell(
-          summary.relativeGrowth
+        )}</td><td>${summary.relativeInoculum ?? ""}</td><td>${summary.biologicalCount ?? summary.n}</td><td>${numberCell(summary.medianEndpointSpotSignal ?? summary.meanDensity)}</td><td>${numberCell(summary.cv)}</td><td>${numberCell(
+          summary.relativeEndpointSpotSignal ?? summary.relativeGrowth
         )}</td><td>${escapeHtml(summary.warnings.join("; "))}</td></tr>`
     )
     .join("");
 
   return htmlPage({
-    title: "AssayLens STAR-inspired Agar Spot Report",
+    title: "AssayLens Agar Endpoint Spot Densitometry Report",
     body: `
-  <h1>AssayLens STAR-inspired Agar Spot Report</h1>
+  <h1>AssayLens Agar Endpoint Spot Densitometry Report</h1>
   <div class="meta">Image: ${escapeHtml(params.imageName ?? "project import")} | Generated: ${escapeHtml(
     params.analysis.generatedAt
   )} | Background density: ${numberCell(params.analysis.qc.medianBackgroundDensity)} | Reference control: ${escapeHtml(
     params.analysis.qc.referenceControlGroupId ?? "none"
-  )} | Selected dilution: ${escapeHtml(
-    params.analysis.qc.selectedDilutionIndex == null ? "none" : String(params.analysis.qc.selectedDilutionIndex)
   )}</div>
-  <p class="meta">This report uses STAR-inspired spot densitometry. It does not claim ImageJ equivalence.</p>
-  <h2>Relative Growth Summary</h2>
+  <p class="meta">Claim level: ${escapeHtml(params.analysis.provenance?.claimLevel ?? "exploratory")} | Protocol: ${escapeHtml(params.analysis.protocolId ?? "unrecorded")}. A single image measures endpoint spot signal, not growth rate.</p>
+  <h2>Relative endpoint spot-signal summary</h2>
   <table>
-    <thead><tr><th>Role</th><th>Group</th><th>Reference control</th><th>Dilution</th><th>n</th><th>Mean density</th><th>CV</th><th>Relative growth</th><th>Warnings</th></tr></thead>
+    <thead><tr><th>Role</th><th>Condition</th><th>Reference control</th><th>Relative inoculum</th><th>Biological n</th><th>Median endpoint signal</th><th>CV</th><th>Relative endpoint signal</th><th>Warnings</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`
   });

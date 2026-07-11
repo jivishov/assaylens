@@ -48,7 +48,7 @@ export function isotonicMic(
     sorted.map((item) => ({
       concentration: item.concentration,
       viability: item.medianViability,
-      weight: Math.max(item.replicateCount, 1)
+      weight: 1
     }))
   );
   const first = sorted.findIndex((_item, index) => fitted[index] <= threshold);

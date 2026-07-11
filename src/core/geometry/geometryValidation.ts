@@ -1,4 +1,4 @@
-import type { PlateAnchors, Point } from "../types";
+import type { A1Position, GeometryState, PlateAnchors, Point } from "../types";
 import { centroid, distance } from "./homography";
 import { anchorsToArray } from "./plateGrid";
 
@@ -15,7 +15,8 @@ export function hasCompleteAnchors(anchors: Partial<PlateAnchors>): anchors is P
 export function validateGeometry(
   anchors: Partial<PlateAnchors>,
   imageWidth: number,
-  imageHeight: number
+  imageHeight: number,
+  a1Position: A1Position = "top_left"
 ): GeometryValidationResult {
   if (!hasCompleteAnchors(anchors)) {
     return {
@@ -26,6 +27,9 @@ export function validateGeometry(
   }
 
   const warnings: string[] = [];
+  if (a1Position === "uncertain") {
+    warnings.push("Plate orientation is uncertain; identify A1 before confirming geometry.");
+  }
   const points = anchorsToArray(anchors);
   const edges = [
     distance(anchors.A1, anchors.A12),
@@ -67,10 +71,35 @@ export function validateGeometry(
   const confidence = quality.reduce((sum, item) => sum + item, 0) / quality.length;
 
   return {
-    valid: warnings.length === 0 || (warnings.length <= 1 && minEdge >= 60 && plateArea > imageArea * 0.04),
+    valid:
+      a1Position !== "uncertain" &&
+      (warnings.length === 0 || (warnings.length <= 1 && minEdge >= 60 && plateArea > imageArea * 0.04)),
     confidence,
     warnings
   };
+}
+
+export function geometryFingerprint(geometry: GeometryState): string {
+  const sortedAdjustments = Object.fromEntries(
+    Object.entries(geometry.wellAdjustments).sort(([a], [b]) => a.localeCompare(b))
+  );
+  const spotGrid = geometry.spotGrid
+    ? {
+        ...geometry.spotGrid,
+        roiAdjustments: Object.fromEntries(
+          Object.entries(geometry.spotGrid.roiAdjustments ?? {}).sort(([a], [b]) => a.localeCompare(b))
+        )
+      }
+    : undefined;
+  return JSON.stringify({
+    anchors: geometry.anchors,
+    a1Position: geometry.a1Position,
+    analysisRadiusFactor: geometry.analysisRadiusFactor,
+    overlayRadiusFactor: geometry.overlayRadiusFactor,
+    wellAdjustments: sortedAdjustments,
+    spotGrid,
+    agarOrientationConfirmed: geometry.agarOrientationConfirmed ?? false
+  });
 }
 
 function inBounds(point: Point, width: number, height: number): boolean {

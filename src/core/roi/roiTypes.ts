@@ -2,16 +2,25 @@ export type AssayMode = "xtt_96well_mic" | "agar_spot_growth";
 
 export type RoiRole =
   | "sample"
-  | "growth_control_high_signal"
-  | "blank_low_signal"
+  | "growth_control"
+  | "reagent_blank"
   | "vehicle_control"
   | "sterility_control"
+  | "positive_inhibition_control"
+  | "legacy_unresolved_blank"
   | "experimental"
   | "control"
   | "background"
   | "unused";
 
 export type RoiQc = {
+  candidatePixelCount?: number;
+  validPixelCount?: number;
+  clippedPixelCount?: number;
+  darkPixelCount?: number;
+  highlightedPixelCount?: number;
+  saturatedPixelCount?: number;
+  outOfImagePixelCount?: number;
   validPixelFraction: number;
   highlightFraction: number;
   darkArtifactFraction: number;
@@ -32,6 +41,12 @@ export type RoiGeometry = {
   radiusY: number;
   overlayRadiusX?: number;
   overlayRadiusY?: number;
+  gridProjection?: {
+    homography: [number, number, number, number, number, number, number, number, number];
+    gridCenter: { x: number; y: number };
+    radiusInGridUnits: number;
+    manualOffset: { x: number; y: number };
+  };
 };
 
 export type RoiMapCell = {
@@ -70,6 +85,7 @@ export type RoiFeature = {
   yellowOrangeLab: number;
   pseudoODBlue: number;
   pseudoODGreenBlue: number;
+  logIntensityContrastGreenBlue?: number;
   selectedSignal?: number;
   qc: RoiQc;
 };

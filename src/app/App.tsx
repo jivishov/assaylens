@@ -29,6 +29,7 @@ import { DEFAULT_SPOT_GRID_SETTINGS, normalizedSpotGridSettings } from "../core/
 import { analysisBlockers } from "../core/analysis/qc";
 import type { AnalysisResult, AssayMode, GeometryState, ProjectFile } from "../core/types";
 import type { ImageAnalysisWorkerResponse } from "../workers/imageAnalysis.worker";
+import { APP_VERSION } from "../core/version";
 
 function createDefaultGeometry(): GeometryState {
   return {
@@ -38,7 +39,9 @@ function createDefaultGeometry(): GeometryState {
     analysisRadiusFactor: 0.27,
     overlayRadiusFactor: 0.36,
     wellAdjustments: {},
-    spotGrid: { ...DEFAULT_SPOT_GRID_SETTINGS, roiAdjustments: {} }
+    spotGrid: { ...DEFAULT_SPOT_GRID_SETTINGS, roiAdjustments: {} },
+    agarOrientationConfirmed: false,
+    confirmationFingerprint: undefined
   };
 }
 
@@ -51,7 +54,6 @@ export function App() {
   const [spotMap, setSpotMap] = useState(() => createEmptySpotMap(DEFAULT_SPOT_GRID_SETTINGS.rows, DEFAULT_SPOT_GRID_SETTINGS.columns));
   const [analysis, setAnalysis] = useState<AnalysisResult | undefined>();
   const [threshold, setThreshold] = useState(0.1);
-  const [spotDilutionOverride, setSpotDilutionOverride] = useState<number | undefined>();
   const [spotReferenceControlGroupId, setSpotReferenceControlGroupId] = useState<string | undefined>();
   const [runningAnalysis, setRunningAnalysis] = useState(false);
   const [analysisError, setAnalysisError] = useState("");
@@ -91,7 +93,6 @@ export function App() {
     setSpotMap(createEmptySpotMap(DEFAULT_SPOT_GRID_SETTINGS.rows, DEFAULT_SPOT_GRID_SETTINGS.columns));
     setAnalysis(undefined);
     setThreshold(0.1);
-    setSpotDilutionOverride(undefined);
     setSpotReferenceControlGroupId(undefined);
     setRunningAnalysis(false);
     setAnalysisError("");
@@ -110,7 +111,6 @@ export function App() {
     setAnalysis(undefined);
     setAnalysisError("");
     setRunningAnalysis(false);
-    setSpotDilutionOverride(undefined);
     setSpotReferenceControlGroupId(undefined);
     setStep("image");
   }
@@ -145,19 +145,22 @@ export function App() {
     if (project.assayMode === "agar_spot_growth") {
       setSpotMap(project.roiMap);
       setPlateMap(createEmptyPlateMap());
-      setSpotDilutionOverride(project.analysisSettings.dilutionOverride);
       setSpotReferenceControlGroupId(project.analysisSettings.referenceControlGroupId);
     } else {
       setPlateMap(project.roiMap);
       setSpotMap(createEmptySpotMap(DEFAULT_SPOT_GRID_SETTINGS.rows, DEFAULT_SPOT_GRID_SETTINGS.columns));
       setThreshold(project.analysisSettings.threshold);
-      setSpotDilutionOverride(undefined);
       setSpotReferenceControlGroupId(undefined);
     }
     setRunningAnalysis(false);
     setAnalysisError("");
-    setAnalysis(project.analysisResult);
-    setStep(project.analysisResult ? "report" : "wells");
+    const importedResult = project.analysisResult ?? (project.historicalAnalysisResult ? {
+      ...project.historicalAnalysisResult,
+      provenance: project.provenance,
+      qcDecision: project.qcDecision
+    } : undefined);
+    setAnalysis(importedResult);
+    setStep(importedResult ? "report" : "wells");
   }
 
   function terminateAnalysisWorker() {
@@ -226,12 +229,12 @@ export function App() {
       worker.postMessage({
         type: "analyze",
         assayMode,
+        protocolId: "agar_endpoint_exploratory_v1",
         imageData: image.imageData,
         geometry,
         roiMap: spotMap,
         settings: {
-          referenceControlGroupId: spotReferenceControlGroupId,
-          dilutionOverride: spotDilutionOverride
+          referenceControlGroupId: spotReferenceControlGroupId
         },
         inputWarnings: image.metadata.warningCodes
       });
@@ -241,6 +244,7 @@ export function App() {
     worker.postMessage({
       type: "analyze",
       assayMode,
+      protocolId: "xtt_image_exploratory_v1",
       imageData: image.imageData,
       geometry,
       roiMap: plateMap,
@@ -279,7 +283,7 @@ export function App() {
         return "Spot Map";
       }
       if (id === "analysis") {
-        return "Relative Growth";
+        return "Endpoint Signal";
       }
     }
     return workflowSteps.find((item) => item.id === id)?.label ?? id;
@@ -302,7 +306,7 @@ export function App() {
             </div>
             <div>
               <strong>Assay Lens</strong>
-              <span>v0.2.0</span>
+              <span>v{APP_VERSION}</span>
             </div>
           </div>
           <nav className="stepper" aria-label="Workflow">
@@ -342,10 +346,10 @@ export function App() {
         <main className="main-area" id="main-content">
           <header className="topbar">
             <div>
-              <h1>{isSpot ? "STAR-inspired agar spot-growth analysis" : "XTT image-derived MIC analysis"}</h1>
+              <h1>{isSpot ? "Agar endpoint spot densitometry" : "XTT relative metabolic activity"}</h1>
               <p>
                 {isSpot
-                  ? "Browser-only spot ROI workflow with explicit background controls and relative-growth summaries."
+                  ? "Browser-only endpoint spot workflow with local background correction, explicit matched controls, and replicate-aware summaries."
                   : "Browser-only 96-well workflow with confirmed geometry, explicit controls, and reproducible exports."}
               </p>
             </div>
@@ -354,7 +358,7 @@ export function App() {
                 <ImageIcon size={16} /> Image
               </button>
               <button className="secondary-button" type="button" onClick={() => setStep("analysis")}>
-                <BarChart3 size={16} /> {isSpot ? "Growth" : "Analysis"}
+                <BarChart3 size={16} /> {isSpot ? "Endpoint signal" : "Analysis"}
               </button>
               <button className="secondary-button" type="button" onClick={() => setStep("report")}>
                 <Map size={16} /> Exports
@@ -439,8 +443,6 @@ export function App() {
               error={analysisError}
               threshold={threshold}
               onThresholdChange={setThreshold}
-              spotDilutionOverride={spotDilutionOverride}
-              onSpotDilutionOverrideChange={setSpotDilutionOverride}
               spotControlGroupIds={spotControlGroupIds}
               spotReferenceControlGroupId={spotReferenceControlGroupId}
               onSpotReferenceControlGroupChange={setSpotReferenceControlGroupId}
@@ -455,7 +457,6 @@ export function App() {
               geometry={geometry}
               plateMap={plateMap}
               spotMap={spotMap}
-              spotDilutionOverride={spotDilutionOverride}
               spotReferenceControlGroupId={spotReferenceControlGroupId}
               analysis={analysis}
             />

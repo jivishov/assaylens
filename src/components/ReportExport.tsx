@@ -34,7 +34,6 @@ type ReportExportProps = {
   geometry: GeometryState;
   plateMap: PlateMapCell[];
   spotMap: SpotMapCell[];
-  spotDilutionOverride?: number;
   spotReferenceControlGroupId?: string;
   analysis?: AnalysisResult;
 };
@@ -45,7 +44,6 @@ export function ReportExport({
   geometry,
   plateMap,
   spotMap,
-  spotDilutionOverride,
   spotReferenceControlGroupId,
   analysis
 }: ReportExportProps) {
@@ -64,7 +62,7 @@ export function ReportExport({
         analysis?.settings ??
         (assayMode === "xtt_96well_mic"
           ? { threshold: 0.1 }
-          : { dilutionOverride: spotDilutionOverride, referenceControlGroupId: spotReferenceControlGroupId }),
+          : { referenceControlGroupId: spotReferenceControlGroupId }),
       qcFlags:
         analysis?.kind === "xtt_96well_mic"
           ? analysis.wells.flatMap((well) => well.qcFlags)
@@ -72,7 +70,7 @@ export function ReportExport({
             ? analysis.spots.flatMap((spot) => spot.qcFlags)
             : []
     });
-    downloadText(isSpot ? "assaylens-agar-spot-project.json" : "assaylens-xtt-mic-project.json", JSON.stringify(project, null, 2), "application/json");
+    downloadText(isSpot ? "assaylens-agar-endpoint-project.json" : "assaylens-xtt-rma-project.json", JSON.stringify(project, null, 2), "application/json");
   }
 
   function exportAnnotatedSvg() {
@@ -121,8 +119,8 @@ export function ReportExport({
           <h2>Report</h2>
           <p>
             {isSpot
-              ? "Exports include geometry, spot map, ROI features, STAR-inspired density summaries, QC flags, and input warning codes."
-              : "Exports include geometry, plate map, settings, features, normalization references, MIC results, QC flags, and input warning codes."}
+              ? "Exports include local-background endpoint spot metrics, paired replicate summaries, QC, protocol, and provenance."
+              : "Exports include raw RMA, observed censored image endpoints, advisory fits, QC, protocol, and provenance."}
           </p>
         </div>
       </div>
@@ -152,11 +150,11 @@ export function ReportExport({
             <button
               className="export-button"
               type="button"
-              onClick={() => downloadText("assaylens-agar-spot-relative-growth.csv", spotDilutionSummariesToCsv(analysis.summaries), "text/csv")}
+              onClick={() => downloadText("assaylens-agar-relative-endpoint-signal.csv", spotDilutionSummariesToCsv(analysis.summaries), "text/csv")}
             >
               <Download size={22} />
-              <span>Relative growth CSV</span>
-              <small>Group+dilution summaries</small>
+              <span>Relative endpoint signal CSV</span>
+              <small>Paired biological summaries by inoculum</small>
             </button>
           </>
         ) : (
@@ -179,17 +177,17 @@ export function ReportExport({
             >
               <Table2 size={22} />
               <span>Per-well analysis CSV</span>
-              <small>Signal, viability, inhibition</small>
+              <small>Signal, raw RMA, raw inhibition</small>
             </button>
             <button
               className="export-button"
               type="button"
               disabled={analysis?.kind !== "xtt_96well_mic"}
-              onClick={() => analysis?.kind === "xtt_96well_mic" && downloadText("assaylens-mic-summary.csv", micResultsToCsv(analysis.micResults), "text/csv")}
+              onClick={() => analysis?.kind === "xtt_96well_mic" && downloadText("assaylens-image-endpoint-summary.csv", micResultsToCsv(analysis.micResults), "text/csv")}
             >
               <Download size={22} />
-              <span>MIC CSV</span>
-              <small>Observed and isotonic MIC</small>
+              <span>Image endpoint CSV</span>
+              <small>Observed status and advisory isotonic fit</small>
             </button>
             <button className="export-button" type="button" onClick={() => downloadText("assaylens-plate-map.csv", plateMapToCsv(plateMap), "text/csv")}>
               <Table2 size={22} />
@@ -210,7 +208,7 @@ export function ReportExport({
           onClick={() =>
             analysis &&
             downloadText(
-              isSpot ? "assaylens-agar-spot-report.html" : "assaylens-xtt-mic-report.html",
+              isSpot ? "assaylens-agar-endpoint-report.html" : "assaylens-xtt-rma-report.html",
               buildHtmlReport({ analysis, roiMap: isSpot ? spotMap : plateMap, imageName: image?.metadata.name }),
               "text/html"
             )

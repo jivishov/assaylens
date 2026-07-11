@@ -26,9 +26,12 @@ export function SpotMapEditor({ spotMap, rows, columns, onSpotMapChange, actions
   const [future, setFuture] = useState<SpotMapCell[][]>([]);
   const [role, setRole] = useState<SpotRole>("experimental");
   const [groupId, setGroupId] = useState("Group 1");
+  const [conditionId, setConditionId] = useState("Condition 1");
+  const [normalizationGroupId, setNormalizationGroupId] = useState("Control set 1");
   const [biologicalReplicate, setBiologicalReplicate] = useState("1");
   const [technicalReplicate, setTechnicalReplicate] = useState("1");
   const [dilutionIndex, setDilutionIndex] = useState("0");
+  const [relativeInoculum, setRelativeInoculum] = useState("1");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState("");
   const validation = useMemo(() => validateSpotMap(spotMap), [spotMap]);
@@ -45,6 +48,11 @@ export function SpotMapEditor({ spotMap, rows, columns, onSpotMapChange, actions
     const parsedBio = roleHasMetadata && biologicalReplicate.trim() ? Number(biologicalReplicate) : undefined;
     const parsedTech = roleHasMetadata && technicalReplicate.trim() ? Number(technicalReplicate) : undefined;
     const parsedDilution = roleHasMetadata && dilutionIndex.trim() ? Number(dilutionIndex) : undefined;
+    const parsedInoculum = roleHasMetadata ? Number(relativeInoculum) : undefined;
+    if (roleHasMetadata && (!Number.isFinite(parsedInoculum) || (parsedInoculum ?? 0) <= 0 || (parsedInoculum ?? 0) > 1)) {
+      setError("Relative inoculum must be greater than 0 and at most 1.");
+      return;
+    }
     if (roleHasMetadata && parsedBio != null && (!Number.isInteger(parsedBio) || parsedBio < 1)) {
       setError("Biological replicate must be a positive integer.");
       return;
@@ -65,6 +73,11 @@ export function SpotMapEditor({ spotMap, rows, columns, onSpotMapChange, actions
               ...cell,
               role,
               groupId: roleHasMetadata ? groupId.trim() : "",
+              conditionId: roleHasMetadata ? conditionId.trim() : "",
+              normalizationGroupId: roleHasMetadata ? normalizationGroupId.trim() : "",
+              biologicalReplicateId: roleHasMetadata ? biologicalReplicate.trim() : "",
+              technicalReplicateId: roleHasMetadata ? technicalReplicate.trim() : "",
+              relativeInoculum: parsedInoculum,
               biologicalReplicate: parsedBio,
               technicalReplicate: parsedTech,
               dilutionIndex: parsedDilution,
@@ -113,7 +126,7 @@ export function SpotMapEditor({ spotMap, rows, columns, onSpotMapChange, actions
         <div className="panel-heading">
           <div>
             <h2>Spot Map</h2>
-            <p>Assign agar spot roles, groups, replicates, dilution indexes, and background ROIs before analysis.</p>
+            <p>Assign endpoint spot conditions, matched controls, exact relative inocula, and replicate identities before analysis.</p>
           </div>
           <div className="history-controls">
             <button className="icon-button" type="button" onClick={undo} disabled={history.length === 0} title="Undo" aria-label="Undo">
@@ -197,6 +210,18 @@ export function SpotMapEditor({ spotMap, rows, columns, onSpotMapChange, actions
             <label>
               <span>Group</span>
               <input value={roleHasMetadata ? groupId : ""} disabled={!roleHasMetadata} onChange={(event) => setGroupId(event.target.value)} />
+            </label>
+            <label>
+              <span>Condition ID</span>
+              <input value={roleHasMetadata ? conditionId : ""} disabled={!roleHasMetadata} onChange={(event) => setConditionId(event.target.value)} />
+            </label>
+            <label>
+              <span>Normalization group</span>
+              <input value={roleHasMetadata ? normalizationGroupId : ""} disabled={!roleHasMetadata} onChange={(event) => setNormalizationGroupId(event.target.value)} />
+            </label>
+            <label>
+              <span>Relative inoculum (0–1)</span>
+              <input value={roleHasMetadata ? relativeInoculum : ""} disabled={!roleHasMetadata} onChange={(event) => setRelativeInoculum(event.target.value)} />
             </label>
             <label>
               <span>Dilution index</span>

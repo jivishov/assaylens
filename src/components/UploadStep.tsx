@@ -234,7 +234,7 @@ export function UploadStep({ image, assayMode, onAssayModeChange, onImageLoaded,
           <h2>Image</h2>
           <p>
             {activeAssayMode === "agar_spot_growth"
-              ? "Use an original agar spot plate photo. STAR-inspired densitometry keeps image pixels local in this browser."
+              ? "Use an original agar spot plate photo. Exploratory endpoint densitometry keeps source pixels local in this browser."
               : "Use the original XTT plate photo. Manual mode keeps the image local in this browser."}
           </p>
         </div>
@@ -248,7 +248,7 @@ export function UploadStep({ image, assayMode, onAssayModeChange, onImageLoaded,
           <span>Assay workflow</span>
           <div className="segmented-control" aria-label="Assay workflow">
             <button className={activeAssayMode === "xtt_96well_mic" ? "active" : ""} type="button" onClick={() => onAssayModeChange?.("xtt_96well_mic")}>
-              <FlaskConical size={15} /> XTT MIC
+              <FlaskConical size={15} /> XTT relative metabolic activity
             </button>
             <button className={activeAssayMode === "agar_spot_growth" ? "active" : ""} type="button" onClick={() => onAssayModeChange?.("agar_spot_growth")}>
               <CircleDot size={15} /> Agar spots
@@ -364,7 +364,7 @@ export function UploadStep({ image, assayMode, onAssayModeChange, onImageLoaded,
         <div className="recommendation">
           <span>
             {activeAssayMode === "agar_spot_growth"
-              ? "Agar spot analysis is STAR-inspired densitometry; validate against manual measurements before scientific claims."
+              ? "Agar endpoint spot signal is exploratory; validate it against reference masks and measurements before quantitative claims."
               : "Avoid screenshots with title areas, debug dots, or Gemini-annotated overlays."}
           </span>
         </div>

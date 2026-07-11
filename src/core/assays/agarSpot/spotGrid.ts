@@ -71,13 +71,19 @@ export function generateSpotGrid(anchors: PlateAnchors, settings?: Partial<SpotG
         row,
         col,
         center: {
-          x: center.x + adjustment.x,
-          y: center.y + adjustment.y
+          x: center.x + adjustment.x * localPitchX,
+          y: center.y + adjustment.y * localPitchY
         },
         radiusX: baseRadius * gridSettings.analysisRadiusFactor,
         radiusY: baseRadius * gridSettings.analysisRadiusFactor,
         overlayRadiusX: baseRadius * gridSettings.overlayRadiusFactor,
-        overlayRadiusY: baseRadius * gridSettings.overlayRadiusFactor
+        overlayRadiusY: baseRadius * gridSettings.overlayRadiusFactor,
+        gridProjection: {
+          homography,
+          gridCenter: { x: col, y: row },
+          radiusInGridUnits: gridSettings.analysisRadiusFactor,
+          manualOffset: { x: adjustment.x * localPitchX, y: adjustment.y * localPitchY }
+        }
       });
     }
   }

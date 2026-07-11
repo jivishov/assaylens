@@ -30,6 +30,13 @@ export function summarizePixelClasses(classes: PixelClassification[], outOfImage
   const clipped = classes.filter((item) => item.clipped).length;
 
   return {
+    candidatePixelCount: classes.length + outOfImageCount,
+    validPixelCount: valid,
+    clippedPixelCount: clipped,
+    darkPixelCount: dark,
+    highlightedPixelCount: highlight,
+    saturatedPixelCount: clipped,
+    outOfImagePixelCount: outOfImageCount,
     validPixelFraction: valid / total,
     highlightFraction: highlight / total,
     darkArtifactFraction: dark / total,

@@ -1,4 +1,4 @@
-import { ROLE_LABELS, roleAcceptsAssignmentMetadata, roleAcceptsConcentration, type PlateMapCell, type WellRole } from "./plateMapTypes";
+import { ROLE_LABELS, roleAcceptsAssignmentMetadata, roleAcceptsConcentration, roleAcceptsNormalizationGroup, type PlateMapCell, type WellRole } from "./plateMapTypes";
 
 export type PlateMapAssignmentValues = {
   role: WellRole;
@@ -6,6 +6,10 @@ export type PlateMapAssignmentValues = {
   sampleId: string;
   concentrationText: string;
   unit: string;
+  normalizationGroupId?: string;
+  biologicalReplicateId?: string;
+  technicalReplicateId?: string;
+  usesVehicleControl?: boolean;
 };
 
 export type PlateMapAssignment = {
@@ -14,6 +18,10 @@ export type PlateMapAssignment = {
   sampleId: string;
   concentration?: number;
   unit: string;
+  normalizationGroupId?: string;
+  biologicalReplicateId?: string;
+  technicalReplicateId?: string;
+  usesVehicleControl?: boolean;
 };
 
 export type PlateMapCellDisplay = {
@@ -31,36 +39,47 @@ export type PlateMapDisplayRow = {
 
 const ROLE_SHORT_LABELS: Record<WellRole, string> = {
   sample: "Sample",
-  growth_control_high_signal: "Growth",
-  blank_low_signal: "Blank",
+  growth_control: "Growth",
   vehicle_control: "Vehicle",
+  reagent_blank: "Reagent blank",
   sterility_control: "Sterile",
+  positive_inhibition_control: "Positive inhibition",
+  legacy_unresolved_blank: "Legacy blank?",
   unused: "Unused"
 };
 
 export function parsePlateMapAssignment(values: PlateMapAssignmentValues): PlateMapAssignment {
-  if (!roleAcceptsAssignmentMetadata(values.role)) {
+  if (!roleAcceptsNormalizationGroup(values.role)) {
     return {
       role: values.role,
       compoundId: "",
       sampleId: "",
       concentration: undefined,
-      unit: ""
+      unit: "",
+      normalizationGroupId: "",
+      biologicalReplicateId: "",
+      technicalReplicateId: "",
+      usesVehicleControl: false
     };
   }
 
+  const acceptsMetadata = roleAcceptsAssignmentMetadata(values.role);
   const concentrationText = values.concentrationText.trim();
   const concentration = concentrationText && roleAcceptsConcentration(values.role) ? Number(concentrationText) : undefined;
-  if (concentrationText && !Number.isFinite(concentration)) {
+  if (concentrationText && roleAcceptsConcentration(values.role) && !Number.isFinite(concentration)) {
     throw new Error("Concentration must be numeric.");
   }
 
   return {
     role: values.role,
-    compoundId: values.compoundId.trim(),
-    sampleId: values.sampleId.trim(),
+    compoundId: acceptsMetadata ? values.compoundId.trim() : "",
+    sampleId: acceptsMetadata ? values.sampleId.trim() : "",
     concentration,
-    unit: values.unit.trim()
+    unit: acceptsMetadata ? values.unit.trim() : "",
+    normalizationGroupId: values.normalizationGroupId?.trim() ?? "",
+    biologicalReplicateId: values.role === "sample" ? values.biologicalReplicateId?.trim() ?? "" : "",
+    technicalReplicateId: values.role === "sample" ? values.technicalReplicateId?.trim() ?? "" : "",
+    usesVehicleControl: values.role === "sample" ? Boolean(values.usesVehicleControl) : false
   };
 }
 
@@ -71,7 +90,11 @@ export function applyPlateMapAssignment(cell: PlateMapCell, assignment: PlateMap
     compoundId: assignment.compoundId,
     sampleId: assignment.sampleId,
     concentration: assignment.concentration,
-    unit: assignment.unit
+    unit: assignment.unit,
+    normalizationGroupId: assignment.normalizationGroupId ?? "",
+    biologicalReplicateId: assignment.biologicalReplicateId ?? "",
+    technicalReplicateId: assignment.technicalReplicateId ?? "",
+    usesVehicleControl: assignment.usesVehicleControl ?? false
   };
 }
 
@@ -105,6 +128,9 @@ function fullDetails(cell: PlateMapCell): PlateMapDisplayRow[] {
     row("Sample", cell.sampleId),
     concentrationRow(cell),
     row("Unit", cell.unit),
+    row("Normalization group", cell.normalizationGroupId),
+    row("Biological replicate", cell.biologicalReplicateId),
+    row("Technical replicate", cell.technicalReplicateId),
     row("Notes", cell.notes ?? "")
   ];
   return details.filter((item): item is PlateMapDisplayRow => Boolean(item));

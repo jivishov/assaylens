@@ -14,6 +14,8 @@ export type SerialDilutionConfig = {
   replicateCols: number[];
   startRow: number;
   startCol: number;
+  normalizationGroupId?: string;
+  biologicalReplicatePrefix?: string;
 };
 
 export function applySerialDilution(plateMap: PlateMapCell[], config: SerialDilutionConfig): PlateMapCell[] {
@@ -50,12 +52,20 @@ export function applySerialDilution(plateMap: PlateMapCell[], config: SerialDilu
           compoundId: config.compoundId,
           sampleId: config.sampleId || `Sample ${target.row + 1}`,
           concentration,
-          unit: config.unit
+          unit: config.unit,
+          normalizationGroupId: config.normalizationGroupId?.trim() || config.sampleId.trim(),
+          biologicalReplicateId: `${config.biologicalReplicatePrefix?.trim() || "Bio"}-${target.row + 1}`,
+          technicalReplicateId: wellId(target.row, target.col),
+          usesVehicleControl: false
         };
       }
     }
   }
   return next;
+}
+
+function wellId(row: number, col: number): string {
+  return `${String.fromCharCode(65 + row)}${col + 1}`;
 }
 
 function stepPosition(row: number, col: number, direction: DilutionDirection, step: number): { row: number; col: number } {

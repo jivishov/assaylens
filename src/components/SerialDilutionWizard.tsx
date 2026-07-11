@@ -18,6 +18,8 @@ export function SerialDilutionWizard({ plateMap, selectedRows, selectedCols, sta
   const [dilutionFactor, setDilutionFactor] = useState(2);
   const [steps, setSteps] = useState(10);
   const [unit, setUnit] = useState("ug/mL");
+  const [normalizationGroupId, setNormalizationGroupId] = useState("Control set 1");
+  const [biologicalReplicatePrefix, setBiologicalReplicatePrefix] = useState("Bio");
   const [direction, setDirection] = useState<DilutionDirection>("right");
   const [error, setError] = useState("");
 
@@ -36,7 +38,9 @@ export function SerialDilutionWizard({ plateMap, selectedRows, selectedCols, sta
           replicateRows: selectedRows,
           replicateCols: selectedCols,
           startRow: startCell.row,
-          startCol: startCell.col
+          startCol: startCell.col,
+          normalizationGroupId,
+          biologicalReplicatePrefix
         })
       );
     } catch (err) {
@@ -67,6 +71,14 @@ export function SerialDilutionWizard({ plateMap, selectedRows, selectedCols, sta
         <label>
           <span>Unit</span>
           <input value={unit} onChange={(event) => setUnit(event.target.value)} />
+        </label>
+        <label>
+          <span>Normalization group</span>
+          <input value={normalizationGroupId} onChange={(event) => setNormalizationGroupId(event.target.value)} />
+        </label>
+        <label>
+          <span>Biological replicate prefix</span>
+          <input value={biologicalReplicatePrefix} onChange={(event) => setBiologicalReplicatePrefix(event.target.value)} />
         </label>
         <label>
           <span>Dilution factor</span>

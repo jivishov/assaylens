@@ -11,6 +11,7 @@ import type {
 } from "../core/types";
 import type { PlateMapCell } from "../core/plateMap/plateMapTypes";
 import type { SpotMapCell } from "../core/assays/agarSpot/spotMapTypes";
+import { validateAnalyzeImageMessage } from "../core/analysis/workerValidation";
 
 export type AnalyzeImageMessage =
   | {
@@ -21,6 +22,7 @@ export type AnalyzeImageMessage =
       roiMap: PlateMapCell[];
       settings: AnalysisSettings;
       inputWarnings: InputWarningCode[];
+      protocolId: string;
     }
   | {
       type: "analyze";
@@ -30,6 +32,7 @@ export type AnalyzeImageMessage =
       roiMap: SpotMapCell[];
       settings: AgarSpotAnalysisSettings;
       inputWarnings: InputWarningCode[];
+      protocolId: string;
     };
 
 export type ImageAnalysisWorkerResponse =
@@ -42,6 +45,7 @@ self.onmessage = (event: MessageEvent<AnalyzeImageMessage>) => {
   }
 
   try {
+    validateAnalyzeImageMessage(event.data);
     const anchors = event.data.geometry.anchors as PlateAnchors;
     if (event.data.assayMode === "xtt_96well_mic") {
       self.postMessage({

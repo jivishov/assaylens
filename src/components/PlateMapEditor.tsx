@@ -17,6 +17,7 @@ import {
   isWellRole,
   roleAcceptsAssignmentMetadata,
   roleAcceptsConcentration,
+  roleAcceptsNormalizationGroup,
   ROLE_COLORS,
   ROLE_LABELS,
   type PlateMapCell,
@@ -70,6 +71,10 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
   const [sampleId, setSampleId] = useState("Sample 1");
   const [concentration, setConcentration] = useState("");
   const [unit, setUnit] = useState("ug/mL");
+  const [normalizationGroupId, setNormalizationGroupId] = useState("Control set 1");
+  const [biologicalReplicateId, setBiologicalReplicateId] = useState("1");
+  const [technicalReplicateId, setTechnicalReplicateId] = useState("1");
+  const [usesVehicleControl, setUsesVehicleControl] = useState(false);
   const [templateName, setTemplateName] = useState("XTT template");
   const [templates, setTemplates] = useState<Record<string, PlateMapCell[]>>(() => loadTemplates());
   const [pasteText, setPasteText] = useState("");
@@ -81,6 +86,7 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
   });
   const validation = useMemo(() => validatePlateMap(plateMap), [plateMap]);
   const roleAcceptsMetadata = roleAcceptsAssignmentMetadata(role);
+  const roleAcceptsGroup = roleAcceptsNormalizationGroup(role);
   const roleAcceptsDose = roleAcceptsConcentration(role);
   const concentrationLabel = role === "vehicle_control" ? "Vehicle concentration" : "Concentration";
   const selectedCells = useMemo(
@@ -206,7 +212,11 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
         compoundId,
         sampleId,
         concentrationText: concentration,
-        unit
+        unit,
+        normalizationGroupId,
+        biologicalReplicateId,
+        technicalReplicateId,
+        usesVehicleControl
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Plate-map assignment failed.");
@@ -262,7 +272,7 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
       return;
     }
     const rows = sortedSelectedCells
-      .map((cell) => [cell.well, cell.role, cell.compoundId, cell.sampleId, cell.concentration ?? "", cell.unit].join("\t"));
+      .map((cell) => [cell.well, cell.role, cell.compoundId, cell.sampleId, cell.concentration ?? "", cell.unit, cell.normalizationGroupId, cell.biologicalReplicateId, cell.technicalReplicateId].join("\t"));
     try {
       await navigator.clipboard.writeText(rows.join("\n"));
       setError("");
@@ -474,7 +484,7 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
           <label>
             <span>Role</span>
             <select aria-label="Role" value={role} onChange={(event) => setRole(event.target.value as WellRole)}>
-              {Object.entries(ROLE_LABELS).map(([value, label]) => (
+              {Object.entries(ROLE_LABELS).filter(([value]) => value !== "legacy_unresolved_blank").map(([value, label]) => (
                 <option key={value} value={value}>
                   {label}
                 </option>
@@ -497,6 +507,22 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
             <label>
               <span>Unit</span>
               <input value={roleAcceptsMetadata ? unit : ""} disabled={!roleAcceptsMetadata} onChange={(event) => setUnit(event.target.value)} />
+            </label>
+            <label>
+              <span>Normalization group</span>
+              <input value={roleAcceptsGroup ? normalizationGroupId : ""} disabled={!roleAcceptsGroup} onChange={(event) => setNormalizationGroupId(event.target.value)} />
+            </label>
+            <label>
+              <span>Biological replicate ID</span>
+              <input value={role === "sample" ? biologicalReplicateId : ""} disabled={role !== "sample"} onChange={(event) => setBiologicalReplicateId(event.target.value)} />
+            </label>
+            <label>
+              <span>Technical replicate ID</span>
+              <input value={role === "sample" ? technicalReplicateId : ""} disabled={role !== "sample"} onChange={(event) => setTechnicalReplicateId(event.target.value)} />
+            </label>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={role === "sample" && usesVehicleControl} disabled={role !== "sample"} onChange={(event) => setUsesVehicleControl(event.target.checked)} />
+              <span>Use matched vehicle controls</span>
             </label>
           </div>
           <button className="primary-button full-width" type="button" onClick={assignSelection}>

@@ -16,7 +16,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { LoadedImage } from "../core/image/imageLoader";
 import type { AnchorName, AssayMode, GeometryState, PlateAnchors, Point, SpotGridSettings } from "../core/types";
 import { buildGridHomography, generatePlateGrid } from "../core/geometry/plateGrid";
-import { hasCompleteAnchors, validateGeometry } from "../core/geometry/geometryValidation";
+import { geometryFingerprint, hasCompleteAnchors, validateGeometry } from "../core/geometry/geometryValidation";
 import { ROLE_COLORS, type PlateMapCell } from "../core/plateMap/plateMapTypes";
 import { generateSpotGrid, normalizedSpotGridSettings } from "../core/assays/agarSpot/spotGrid";
 import { SPOT_ROLE_COLORS, type SpotMapCell } from "../core/assays/agarSpot/spotMapTypes";
@@ -67,8 +67,8 @@ export function WellAlignmentCanvas({ image, assayMode, geometry, plateMap, spot
   const [future, setFuture] = useState<GeometryState[]>([]);
 
   const validation = useMemo(
-    () => validateGeometry(geometry.anchors, image?.metadata.width ?? 0, image?.metadata.height ?? 0),
-    [geometry.anchors, image?.metadata.height, image?.metadata.width]
+    () => validateGeometry(geometry.anchors, image?.metadata.width ?? 0, image?.metadata.height ?? 0, geometry.a1Position),
+    [geometry.a1Position, geometry.anchors, image?.metadata.height, image?.metadata.width]
   );
 
   const grid = useMemo<DisplayRoi[]>(() => {
@@ -374,8 +374,8 @@ export function WellAlignmentCanvas({ image, assayMode, geometry, plateMap, spot
             roiAdjustments: {
               ...startGrid.roiAdjustments,
               [drag.well]: {
-                x: startAdjustment.x + delta.x,
-                y: startAdjustment.y + delta.y
+                x: startAdjustment.x + delta.x / Math.max(roi.analysisRadius / startGrid.analysisRadiusFactor, 1),
+                y: startAdjustment.y + delta.y / Math.max(roi.analysisRadius / startGrid.analysisRadiusFactor, 1)
               }
             }
           }
@@ -480,7 +480,10 @@ export function WellAlignmentCanvas({ image, assayMode, geometry, plateMap, spot
               ...spotGrid,
               roiAdjustments: {
                 ...spotGrid.roiAdjustments,
-                [selectedWell]: { x: current.x + dx, y: current.y + dy }
+                [selectedWell]: {
+                  x: current.x + dx / Math.max((grid.find((item) => item.id === selectedWell)?.analysisRadius ?? 1) / spotGrid.analysisRadiusFactor, 1),
+                  y: current.y + dy / Math.max((grid.find((item) => item.id === selectedWell)?.analysisRadius ?? 1) / spotGrid.analysisRadiusFactor, 1)
+                }
               }
             }
           },
@@ -562,7 +565,12 @@ export function WellAlignmentCanvas({ image, assayMode, geometry, plateMap, spot
     if (!validation.valid || !hasCompleteAnchors(geometry.anchors)) {
       return;
     }
-    setGeometry({ ...geometry, confirmed: true }, geometry);
+    const next = {
+      ...geometry,
+      confirmed: true,
+      agarOrientationConfirmed: assayMode === "agar_spot_growth" ? true : geometry.agarOrientationConfirmed
+    };
+    setGeometry({ ...next, confirmationFingerprint: geometryFingerprint(next) }, geometry);
   }
 
   function fitView() {
