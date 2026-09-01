@@ -122,9 +122,14 @@ function validationFailure(error: unknown) {
   return { ok: false, code: "invalid_input", message: error instanceof Error ? error.message : "Invalid tool input." };
 }
 
+export function unregisterAssayLensTools(): void {
+  registrationController?.abort();
+  registrationController = undefined;
+}
+
 export async function registerAssayLensTools(): Promise<void> {
   if (!document.modelContext?.registerTool) return;
-  registrationController?.abort();
+  unregisterAssayLensTools();
   const controller = new AbortController();
   registrationController = controller;
   const options = { signal: controller.signal };
