@@ -1,6 +1,6 @@
 {
   "name": "assaylens",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,6 +24,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "vitest": "latest",
-    "jsdom": "latest"
+    "jsdom": "latest",
+    "webmcp-types": "0.1.5"
   }
 }

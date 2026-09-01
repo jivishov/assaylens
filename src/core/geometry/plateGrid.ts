@@ -28,6 +28,12 @@ export function wellName(row: number, col: number): string {
   return `${ROW_LABELS[row]}${col + 1}`;
 }
 
+export function parseWellName(value: string): { row: number; col: number } {
+  const match = /^([A-H])(1[0-2]|[1-9])$/.exec(value.trim().toUpperCase());
+  if (!match) throw new Error(`Invalid well name: ${value}. Expected A1-H12.`);
+  return { row: match[1].charCodeAt(0) - 65, col: Number(match[2]) - 1 };
+}
+
 export function generatePlateGrid(
   homography: Homography,
   analysisRadiusFactor = 0.27,

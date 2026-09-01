@@ -15,7 +15,8 @@
     "isolatedModules": true,
     "noEmit": true,
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "types": ["webmcp-types"]
   },
   "include": ["src"]
 }
