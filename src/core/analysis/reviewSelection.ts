@@ -14,7 +14,8 @@ function priority(result: MicResult): number {
 }
 
 export function selectHighestQcPriority(results: MicResult[]): MicResult | undefined {
-  return results.map((result, index) => ({ result, index, p: priority(result) }))
+  return results
+    .map((result, index) => ({ result, index, p: priority(result) }))
     .sort((a, b) => a.p - b.p || a.index - b.index)[0]?.result;
 }
 
@@ -23,7 +24,11 @@ export function reviewReason(result: MicResult): string {
   if (result.status === "indeterminate_missing_data") return "Missing data makes the endpoint indeterminate";
   if (result.status === "non_monotonic_indeterminate") return "Non-monotonic response requires review";
   const excluded = result.concentrations.flatMap((point) => point.excludedWellIds);
-  if (excluded.length) return `Contains excluded wells: ${excluded.join(", ")}`;
+  if (excluded.length) {
+    const shown = excluded.slice(0, 6);
+    const suffix = excluded.length > shown.length ? ` (+${excluded.length - shown.length} more)` : "";
+    return `Contains excluded wells: ${shown.join(", ")}${suffix}`;
+  }
   if (result.warnings.length) return result.warnings[0];
   return "Routine human QC review";
 }

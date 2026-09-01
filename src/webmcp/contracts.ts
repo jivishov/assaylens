@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { PlateMapValidation } from "../core/plateMap/plateMapValidation";
 import type { AnalysisResult, AssayMode, GeometryState } from "../core/types";
 import type { LoadedImage } from "../core/image/imageLoader";
-import type { PlateMapCell, WellRole } from "../core/plateMap/plateMapTypes";
+import type { PlateMapCell } from "../core/plateMap/plateMapTypes";
 import type { WorkflowStep } from "../app/routes";
 
 export const XTT_WEBMCP_SCIENTIFIC_CONTEXT = {
@@ -41,7 +41,6 @@ export const controlRoleSchema = z.enum([
   "positive_inhibition_control",
   "unused"
 ]);
-export type AssignableControlRole = z.infer<typeof controlRoleSchema>;
 
 export const assignControlsSchema = z.object({
   assignments: z.array(z.object({
@@ -62,7 +61,17 @@ export const focusReviewSchema = z.discriminatedUnion("mode", [
 ]);
 export type FocusReviewInput = z.infer<typeof focusReviewSchema>;
 
-export type ToolFailure = { ok: false; code: string; message: string; blockers?: string[]; conflicts?: string[] };
+export type ToolFailure = {
+  ok: false;
+  code: string;
+  message: string;
+  blockers?: string[];
+  blockerCount?: number;
+  blockersTruncated?: boolean;
+  conflicts?: string[];
+  conflictCount?: number;
+  conflictsTruncated?: boolean;
+};
 export type ToolSuccess<T> = { ok: true; data: T };
 export type ToolResult<T> = ToolFailure | ToolSuccess<T>;
 
@@ -86,18 +95,26 @@ export type AssayLensSiteApi = {
   focusReview: (input: FocusReviewInput) => unknown;
 };
 
+export type TruncatedList<T> = {
+  items: T[];
+  count: number;
+  truncated: boolean;
+};
+
 export function roleCounts(plateMap: PlateMapCell[]): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const cell of plateMap) counts[cell.role] = (counts[cell.role] ?? 0) + 1;
   return counts;
 }
 
-export function truncate<T>(values: T[], limit = 12) {
+export function truncate<T>(values: T[], limit = 12): TruncatedList<T> {
   return { items: values.slice(0, limit), count: values.length, truncated: values.length > limit };
 }
 
-export function isOccupied(cell: PlateMapCell): boolean {
-  return cell.role !== "unused";
+export function summarizeValidation(validation: PlateMapValidation) {
+  return {
+    valid: validation.valid,
+    blockers: truncate(validation.blockers),
+    warnings: truncate(validation.warnings)
+  };
 }
-
-export type AllowedControlRole = Exclude<WellRole, "sample" | "legacy_unresolved_blank">;
