@@ -5,7 +5,7 @@ import {
   CircleDot,
   FlaskConical,
   Image as ImageIcon,
-  Map,
+  Map as MapIcon,
   RotateCcw
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -442,14 +442,14 @@ export function App() {
         <main className="main-area" id="main-content">
           <header className="topbar">
             <div><h1>{isSpot ? "Agar endpoint spot densitometry" : "XTT relative metabolic activity"}</h1><p>{isSpot ? "Browser-only endpoint spot workflow with local background correction, explicit matched controls, and replicate-aware summaries." : "Browser-only 96-well workflow with confirmed geometry, explicit controls, and reproducible exports."}</p></div>
-            <div className="topbar-actions"><button className="secondary-button" type="button" onClick={() => setStep("image")}><ImageIcon size={16} /> Image</button><button className="secondary-button" type="button" onClick={() => setStep("analysis")}><BarChart3 size={16} /> {isSpot ? "Endpoint signal" : "Analysis"}</button><button className="secondary-button" type="button" onClick={() => setStep("report")}><Map size={16} /> Exports</button><button className="icon-button" type="button" onClick={resetProject} title="Reset project" aria-label="Reset project"><RotateCcw size={17} /></button></div>
+            <div className="topbar-actions"><button className="secondary-button" type="button" onClick={() => setStep("image")}><ImageIcon size={16} /> Image</button><button className="secondary-button" type="button" onClick={() => setStep("analysis")}><BarChart3 size={16} /> {isSpot ? "Endpoint signal" : "Analysis"}</button><button className="secondary-button" type="button" onClick={() => setStep("report")}><MapIcon size={16} /> Exports</button><button className="icon-button" type="button" onClick={resetProject} title="Reset project" aria-label="Reset project"><RotateCcw size={17} /></button></div>
           </header>
 
           {isSyntheticDemo && <div className="error-banner" role="status">Synthetic WebMCP demonstration image. Results are exploratory image-derived relative metabolic activity only; they are not calibrated plate-reader absorbance, a direct viable-cell count, or a validated MIC.</div>}
 
           {step === "image" && <><div className="surface-panel"><div className="panel-heading compact"><h2>WebMCP synthetic demo</h2><span>No private data or API key required</span></div><p>Loads deterministic synthetic XTT plate pixels with preconfirmed geometry and an empty plate map so agent changes remain visible.</p><button className="secondary-button" type="button" onClick={() => void loadWebMcpDemo()}>Load WebMCP demo</button></div><UploadStep image={image} assayMode={assayMode} onAssayModeChange={handleAssayModeChange} onImageLoaded={handleImageLoaded} onProjectImported={handleProjectImported} onReset={resetProject} /></>}
 
-          {step === "wells" && <div className="wells-screen"><WellAlignmentCanvas image={image} assayMode={assayMode} geometry={geometry} plateMap={plateMap} spotMap={spotMap} onGeometryChange={setGeometry} footerAction={<button className="secondary-button plate-map-continue-button" type="button" disabled={!geometry.confirmed} onClick={() => setStep("plateMap")}><Map size={16} /> {isSpot ? "Continue to spot map" : "Continue to plate map"}</button>} sideExtras={isSpot ? undefined : <GeminiKeyPanel disabled={!image} onDetect={runGeminiDetection} />} /></div>}
+          {step === "wells" && <div className="wells-screen"><WellAlignmentCanvas image={image} assayMode={assayMode} geometry={geometry} plateMap={plateMap} spotMap={spotMap} onGeometryChange={setGeometry} footerAction={<button className="secondary-button plate-map-continue-button" type="button" disabled={!geometry.confirmed} onClick={() => setStep("plateMap")}><MapIcon size={16} /> {isSpot ? "Continue to spot map" : "Continue to plate map"}</button>} sideExtras={isSpot ? undefined : <GeminiKeyPanel disabled={!image} onDetect={runGeminiDetection} />} /></div>}
 
           {step === "plateMap" && (isSpot ? <SpotMapEditor spotMap={spotMap} rows={spotGridSettings.rows} columns={spotGridSettings.columns} onSpotMapChange={setSpotMap} actions={<><button className="secondary-button" type="button" onClick={() => setStep("wells")}>Back to ROIs</button><button className="primary-button" type="button" disabled={!spotMapValidation.valid} onClick={() => setStep("analysis")}>Continue to growth</button></>} /> : <PlateMapEditor plateMap={plateMap} onPlateMapChange={commitPlateMap} actions={<><button className="secondary-button" type="button" onClick={() => setStep("wells")}>Back to wells</button><button className="primary-button" type="button" disabled={!plateMapValidation.valid} onClick={() => setStep("analysis")}>Continue to analysis</button></>} />)}
 
