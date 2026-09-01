@@ -1,12 +1,33 @@
 import { parseWellName } from "../geometry/plateGrid";
 import { createEmptyPlateMap, type PlateMapCell } from "./plateMapTypes";
-import type { AssignControlsInput } from "../../webmcp/contracts";
+
+export type AssignableControlRole =
+  | "growth_control"
+  | "reagent_blank"
+  | "vehicle_control"
+  | "sterility_control"
+  | "positive_inhibition_control"
+  | "unused";
+
+export type ControlAssignment = {
+  role: AssignableControlRole;
+  wells: string[];
+  normalizationGroupId?: string;
+  vehicleLabel?: string;
+  vehicleConcentration?: number;
+  vehicleUnit?: string;
+};
+
+export type AssignControlsConfig = {
+  assignments: ControlAssignment[];
+  overwrite: boolean;
+};
 
 export type AssignControlsResult = { plateMap: PlateMapCell[]; changedWells: string[] };
 
-export function assignControlsAtomic(plateMap: PlateMapCell[], input: AssignControlsInput): AssignControlsResult {
+export function assignControlsAtomic(plateMap: PlateMapCell[], input: AssignControlsConfig): AssignControlsResult {
   const seen = new Set<string>();
-  const targets: Array<{ index: number; well: string; assignment: AssignControlsInput["assignments"][number] }> = [];
+  const targets: Array<{ index: number; well: string; assignment: ControlAssignment }> = [];
 
   for (const assignment of input.assignments) {
     if (assignment.role !== "unused" && !assignment.normalizationGroupId?.trim()) {
@@ -34,15 +55,14 @@ export function assignControlsAtomic(plateMap: PlateMapCell[], input: AssignCont
       next[index] = { ...emptyByWell.get(well)! };
       continue;
     }
-    const previous = next[index];
     next[index] = {
-      ...previous,
+      ...next[index],
       role: assignment.role,
       normalizationGroupId: assignment.normalizationGroupId!.trim(),
       compoundId: assignment.role === "vehicle_control" ? assignment.vehicleLabel?.trim() ?? "" : "",
       sampleId: "",
       concentration: assignment.role === "vehicle_control" ? assignment.vehicleConcentration : undefined,
-      unit: assignment.role === "vehicle_control" ? assignment.vehicleUnit ?? "" : "",
+      unit: assignment.role === "vehicle_control" ? assignment.vehicleUnit?.trim() ?? "" : "",
       biologicalReplicateId: "",
       technicalReplicateId: "",
       usesVehicleControl: false,
