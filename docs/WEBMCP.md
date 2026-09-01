@@ -16,7 +16,8 @@ src/webmcp/registerAssayLensTools.ts
     v
 src/webmcp/assayLensBridge.ts
     |
-    +--> existing applySerialDilution(...)
+    +--> src/core/plateMap/configureXttSeries.ts
+    |       +--> existing applySerialDilution(...)
     +--> atomic assignControlsAtomic(...)
     +--> existing validatePlateMap(...) / analysisBlockers(...)
     +--> shared Promise-based image-analysis worker
@@ -30,23 +31,52 @@ Existing React state and visible AssayLens UI
 
 | Tool | Purpose | Side effect |
 |---|---|---|
-| `inspect_xtt_workflow` | Inspect XTT workflow state, plate validation, blockers, concise results, and claim limitations. | None |
-| `configure_xtt_series` | Configure one horizontal serial dilution using existing `applySerialDilution`. | Plate-map mutation; stale analysis invalidated |
+| `inspect_xtt_workflow` | Inspect XTT workflow state, plate validation, analysis blockers/readiness, concise results, and claim limitations. | None |
+| `configure_xtt_series` | Configure one horizontal serial dilution using the existing `applySerialDilution`. | Plate-map mutation; stale analysis invalidated |
 | `assign_xtt_controls` | Batch-assign explicit XTT controls atomically. | Plate-map mutation; stale analysis invalidated |
 | `run_xtt_analysis` | Execute the existing worker after normal readiness checks. | Stores result and opens Analysis |
 | `focus_xtt_review` | Select the deterministic highest-priority QC review item or a named series. | Interface focus only |
 
-All tool input schemas reject unknown properties. Runtime inputs are parsed again with Zod. Expected workflow failures return structured `ok: false` objects rather than throwing agent-facing stack traces.
+All object input schemas set `additionalProperties: false`. Runtime inputs are parsed again with Zod. Expected workflow failures return structured `ok: false` objects rather than throwing agent-facing stack traces.
+
+### Output budget
+
+Tool outputs are deliberately concise. Blockers, warnings, changed wells, configured series, concentrations, excluded wells, and result-series summaries are capped. Capped collections include `count` and `truncated` metadata. Site tools never return raw pixels, `ImageData`, `ImageBitmap`, `File`, `Blob`, API keys, local file paths, or complete project files.
 
 ## Fidelity constraints
 
 - Horizontal dilution only. The existing helper derives biological replicate IDs from rows, so vertical dilution is intentionally not exposed through WebMCP.
-- A `compoundId + sampleId` pair cannot be created in different normalization groups through the site tool because endpoint grouping is currently based on compound and sample identity.
+- Replicate rows extend downward from the selected starting row and are preflighted before any mutation.
+- A `compoundId + sampleId` pair cannot be created in different normalization groups through the site tool because endpoint grouping is currently based on compound and sample identity. A deliberate overwrite of the same target series may replace its normalization group.
 - Existing `validatePlateMap` and `analysisBlockers` remain authoritative; tool handlers do not duplicate scientific validation.
 - Any plate-map mutation invalidates a prior analysis before the next agent call can observe state.
+- Plate mutations are rejected while analysis is running. A human reset or other application-level state change cancels the shared run through an `AbortController`, so a terminated worker cannot leave a permanently pending run Promise.
 - The human Run button and WebMCP run tool use the same Promise-based worker path.
-- Worker execution resolves only on the worker `complete` message, rejects on worker error, and terminates on completion, failure, or WebMCP cancellation.
+- Worker execution resolves only on the worker `complete` message, rejects on worker error, and terminates on completion, failure, reset, or WebMCP cancellation.
 - Real image loading and geometry confirmation remain human responsibilities.
+- WebMCP registration is static at page startup. If registration fails or WebMCP is unavailable, the normal application remains usable.
+
+## Tool behavior details
+
+### `inspect_xtt_workflow`
+
+Returns the current assay mode and step; whether an image is loaded; whether geometry is confirmed and current; role counts; bounded sample-series summaries; current plate-map validation blockers/warnings; current analysis blockers/readiness/running/availability; bounded result summaries; and the fixed exploratory scientific context.
+
+### `configure_xtt_series`
+
+Inputs include start well, left/right direction, compound/sample identifiers, start concentration, dilution factor, 2–12 doses, 1–4 adjacent replicate rows, one supported mass-concentration unit, normalization-group ID, optional vehicle-control declaration, and `overwrite` (default `false`). The helper computes every target first, verifies bounds/collisions/series identity, and only then applies the existing serial-dilution helper.
+
+### `assign_xtt_controls`
+
+Assignable roles are `growth_control`, `reagent_blank`, `vehicle_control`, `sterility_control`, `positive_inhibition_control`, and `unused`. Non-unused roles require a normalization group. Assignments are preflighted as one atomic batch; duplicate well references are rejected. Non-sample controls clear stale sample/replicate metadata. `unused` restores the complete empty-well shape.
+
+### `run_xtt_analysis`
+
+Accepts no scientific-setting inputs. It uses the current threshold and existing validation. It is blocked unless the image is loaded, the four anchors are complete, geometry is confirmed/current and oriented, the plate map is valid, and no analysis is already running. The response is a bounded per-series summary plus the fixed scientific context.
+
+### `focus_xtt_review`
+
+Moves the visible Analysis view to either a named series or the deterministic highest-priority QC series, updates the controlled dose-response selection, shows a compact review banner, and scrolls the existing dose-response panel into view. It does not interpret efficacy or mechanism.
 
 ## QC-review focus
 
@@ -72,13 +102,11 @@ WebMCP inspection, analysis, and review outputs carry a fixed context:
 - not a validated MIC or efficacy determination
 - human review of image quality, geometry, controls, and QC is required
 
-Raw image pixels, `ImageData`, `ImageBitmap`, `File`, `Blob`, API keys, file paths, and complete project files are never returned by a site tool.
-
 ## Synthetic demo
 
-The Image screen includes a deterministic in-browser synthetic plate fixture with preconfirmed geometry and an initially empty plate map. It intentionally adds a white glare region at one sample-well location. The demo does not alter the analysis thresholds; the fixture is tuned to exercise the existing workflow rather than changing the algorithm to fit the demonstration.
+`src/demo/xttWebMcpDemo.ts` creates a deterministic in-browser synthetic plate fixture. It uses the existing `buildGridHomography` and `generatePlateGrid` functions to position wells, installs preconfirmed/current geometry, and starts with an empty plate map. H1/H2 provide strong growth-control pixels, H3/H4 weak blank pixels, A1–A8 and B1–B8 form the demonstration dose series, and B5 contains a white glare region large enough to exercise the existing XTT ROI QC threshold without altering that threshold.
 
-The demo is explicitly disclosed as synthetic in the UI and all results remain exploratory.
+The Image screen labels the fixture as synthetic. All resulting measurements remain exploratory.
 
 ## Pre-existing versus challenge work
 
@@ -92,6 +120,14 @@ The demo is explicitly disclosed as synthetic in the UI and all results remain e
 | Worker-based XTT/agar analysis | Promise/cancellation wrapper shared with human run |
 | Dose-response and QC result views | Deterministic agent review focus |
 | Project/report exports | Synthetic no-key demo and challenge documentation |
+
+## Verification
+
+Focused automated coverage includes well parsing, right/left dilution placement, bounds/collisions/atomicity, replicate IDs, supported units, series-identity protection, control batching/duplicates/clearing, exact review priority, exactly five tool definitions, closed JSON schemas, runtime unknown-field rejection, worker completion/error/cancellation/cleanup/no-early-success, fixed scientific wording, and bounded-output metadata.
+
+The repository commits `package-lock.json`; CI uses `npm ci`, then runs typecheck, Vitest, and the production build before GitHub Pages deployment.
+
+Challenge submission evidence should additionally capture the deployed visible plate-map changes and focused QC-review state from a real WebMCP-capable browser-agent run. Those screenshots and repeated fresh-session runs are runtime evidence, not generated artifacts, and should not be fabricated from code alone.
 
 ## Browser behavior
 
