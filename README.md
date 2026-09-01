@@ -63,6 +63,4 @@ npm run dev
 
 See [`docs/WEBMCP.md`](docs/WEBMCP.md) for the bridge architecture, tool contracts, guardrails, fidelity constraints, and challenge-scope notes.
 
-## License
-
-MIT. See [`LICENSE`](LICENSE).
+The implementation plan treated an MIT license as optional and conditional on an explicit owner licensing decision. This repository therefore does not assign a license as part of the WebMCP extension.
