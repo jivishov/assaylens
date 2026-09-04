@@ -31,6 +31,18 @@ AssayLens turns a confirmed plate photograph into **image-derived relative metab
   </tr>
 </table>
 
+## Try it with the included XTT plate
+
+A real plate photograph is included so reviewers can exercise the normal AssayLens workflow without preparing their own image.
+
+1. Download [`sample-xtt-plate.jpg`](docs/images/sample-xtt-plate.jpg).
+2. Open the [live AssayLens site](https://jivishov.github.io/assaylens/) and upload the image on the **Image** screen.
+3. On **Wells**, place and review the four corner anchors, confirm the plate orientation and geometry, and continue to **Plate Map**.
+4. Assign the sample series and the appropriate experimental controls/normalization groups for the interpretation you want to test.
+5. Continue to **Analysis** once the readiness checks pass. In a WebMCP-capable browser or agent, the five site tools described below can inspect and operate the supported XTT workflow on the same visible application state.
+
+The supplied photograph is a convenient trial input, not a validated reference dataset. The screenshots above show an example workflow and exploratory output; they should not be treated as expected quantitative results for every configuration.
+
 ## About
 
 - XTT 96-well workflow with image upload/capture, manual or assisted geometry confirmation, well-level QC, explicit normalization controls, and exploratory dose-response review.
@@ -57,7 +69,6 @@ All tool schemas reject unknown fields, runtime inputs are validated again with 
 WebMCP mutations and the visible plate editor share the same React state. Configuring a series or controls through a tool updates the plate map, Selection panel, and Serial dilution panel together. Clicking a mapped well also updates Selection with that well's exact role, compound, concentration, unit, normalization group, and replicate identifiers.
 
 For a mapped sample well, Serial dilution preserves the genuine series source (for example, a leftward series can start at F10 with 500 ug/mL) while displaying the clicked well's current dose as context. This prevents a low-dose well from being mistaken for the source concentration when the series is edited again.
-
 
 ## Guardrails
 
