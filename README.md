@@ -33,13 +33,6 @@ WebMCP mutations and the visible plate editor share the same React state. Config
 
 For a mapped sample well, Serial dilution preserves the genuine series source (for example, a leftward series can start at F10 with 500 ug/mL) while displaying the clicked well's current dose as context. This prevents a low-dose well from being mistaken for the source concentration when the series is edited again.
 
-## Try the synthetic WebMCP demo
-
-1. Open the [live site](https://jivishov.github.io/assaylens/) in a WebMCP-capable browser or agent.
-2. On the Image screen, choose **Load WebMCP demo**. It creates a deterministic synthetic fixture using the same grid geometry as analysis and starts with an empty map.
-3. Ask the agent to configure a horizontal dilution, assign growth controls and reagent blanks for the same normalization group, inspect readiness, run analysis, and focus the highest-priority QC review item.
-
-The tools are individually valid and do not hard-code a prescribed sequence. Real image loading and geometry confirmation remain human-controlled.
 
 ## Guardrails
 
