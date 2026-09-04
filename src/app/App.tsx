@@ -695,11 +695,6 @@ export function App() {
 
           {step === "image" && (
             <>
-              <div className="surface-panel">
-                <div className="panel-heading compact"><h2>WebMCP synthetic demo</h2><span>No private data or API key required</span></div>
-                <p>Loads deterministic synthetic XTT plate pixels with preconfirmed geometry and an empty plate map so agent changes remain visible.</p>
-                <button className="secondary-button" type="button" onClick={() => void loadWebMcpDemo()}>Load WebMCP demo</button>
-              </div>
               <UploadStep
                 image={image}
                 assayMode={assayMode}
