@@ -16,6 +16,12 @@
       name="description"
       content="AssayLens browser-only exploratory XTT relative metabolic activity and agar endpoint spot densitometry from original images."
     />
+    <style>
+      /* Keep the untested synthetic fixture out of the public reviewer workflow. */
+      .main-area > .surface-panel:has(+ .upload-panel) {
+        display: none !important;
+      }
+    </style>
     <title>AssayLens</title>
   </head>
   <body>
