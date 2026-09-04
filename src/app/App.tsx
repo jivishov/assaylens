@@ -22,6 +22,7 @@ import type { LoadedImage } from "../core/image/imageLoader";
 import type { GeminiModelId } from "../core/gemini/modelCatalog";
 import { geometryFingerprint, hasCompleteAnchors } from "../core/geometry/geometryValidation";
 import { createEmptyPlateMap, type PlateMapCell } from "../core/plateMap/plateMapTypes";
+import type { PlateMapSidebarSyncTarget } from "../core/plateMap/plateMapSidebarSync";
 import { validatePlateMap } from "../core/plateMap/plateMapValidation";
 import { configureXttSeriesAtomic } from "../core/plateMap/configureXttSeries";
 import { assignControlsAtomic } from "../core/plateMap/assignControls";
@@ -102,6 +103,7 @@ export function App() {
   const [image, setImage] = useState<LoadedImage | undefined>();
   const [geometry, setGeometry] = useState<GeometryState>(() => createDefaultGeometry());
   const [plateMap, setPlateMap] = useState(createEmptyPlateMap);
+  const [plateMapSidebarSyncTarget, setPlateMapSidebarSyncTarget] = useState<PlateMapSidebarSyncTarget | undefined>();
   const [spotMap, setSpotMap] = useState(() => createEmptySpotMap(DEFAULT_SPOT_GRID_SETTINGS.rows, DEFAULT_SPOT_GRID_SETTINGS.columns));
   const [analysis, setAnalysis] = useState<AnalysisResult | undefined>();
   const [threshold, setThreshold] = useState(0.1);
@@ -113,6 +115,7 @@ export function App() {
   const [isSyntheticDemo, setIsSyntheticDemo] = useState(false);
   const analysisWorkerRef = useRef<Worker | null>(null);
   const analysisAbortControllerRef = useRef<AbortController | null>(null);
+  const plateMapSidebarSyncRevisionRef = useRef(0);
 
   const spotGridSettings = useMemo(() => normalizedSpotGridSettings(geometry.spotGrid), [geometry.spotGrid]);
   const plateMapValidation = useMemo(() => validatePlateMap(plateMap), [plateMap]);
@@ -163,10 +166,19 @@ export function App() {
     analysisWorkerRef.current = null;
   }
 
-  function commitPlateMap(next: PlateMapCell[]) {
+  function commitPlateMap(next: PlateMapCell[], preferredSidebarWells?: readonly string[]) {
     if (liveStateRef.current.runningAnalysis) terminateAnalysisWorker();
     const validation = validatePlateMap(next);
     setPlateMap(next);
+    if (preferredSidebarWells?.length) {
+      plateMapSidebarSyncRevisionRef.current += 1;
+      setPlateMapSidebarSyncTarget({
+        revision: plateMapSidebarSyncRevisionRef.current,
+        preferredWells: [...preferredSidebarWells]
+      });
+    } else {
+      setPlateMapSidebarSyncTarget(undefined);
+    }
     setAnalysis(undefined);
     setAnalysisError("");
     setFocusedSeriesKey(undefined);
@@ -188,6 +200,7 @@ export function App() {
     setImage(undefined);
     setGeometry(nextGeometry);
     setPlateMap(nextPlateMap);
+    setPlateMapSidebarSyncTarget(undefined);
     setSpotMap(createEmptySpotMap(DEFAULT_SPOT_GRID_SETTINGS.rows, DEFAULT_SPOT_GRID_SETTINGS.columns));
     setAnalysis(undefined);
     setThreshold(0.1);
@@ -219,6 +232,7 @@ export function App() {
     setAssayMode(nextMode);
     setGeometry(nextGeometry);
     setPlateMap(nextPlateMap);
+    setPlateMapSidebarSyncTarget(undefined);
     setSpotMap(createEmptySpotMap(DEFAULT_SPOT_GRID_SETTINGS.rows, DEFAULT_SPOT_GRID_SETTINGS.columns));
     setAnalysis(undefined);
     setAnalysisError("");
@@ -281,6 +295,7 @@ export function App() {
     setImage(undefined);
     setAssayMode(project.assayMode);
     setGeometry(nextGeometry);
+    setPlateMapSidebarSyncTarget(undefined);
     if (project.assayMode === "agar_spot_growth") {
       setSpotMap(project.roiMap);
       setPlateMap(importedPlateMap);
@@ -404,6 +419,7 @@ export function App() {
     setImage(demo.image);
     setGeometry(demo.geometry);
     setPlateMap(nextPlateMap);
+    setPlateMapSidebarSyncTarget(undefined);
     setAnalysis(undefined);
     setAnalysisError("");
     setFocusedSeriesKey(undefined);
@@ -469,7 +485,7 @@ export function App() {
       }
       try {
         const configured = configureXttSeriesAtomic(state.plateMap, input);
-        commitPlateMap(configured.plateMap);
+        commitPlateMap(configured.plateMap, configured.changedWells);
         setStep("plateMap");
         liveStateRef.current = { ...liveStateRef.current, step: "plateMap" };
         const validation = validatePlateMap(configured.plateMap);
@@ -499,7 +515,10 @@ export function App() {
       }
       try {
         const assigned = assignControlsAtomic(state.plateMap, input);
-        commitPlateMap(assigned.plateMap);
+        // A Selection panel can only display one coherent role. When a single
+        // WebMCP call assigns several control roles, select the first explicit
+        // assignment rather than presenting mixed control wells as one role.
+        commitPlateMap(assigned.plateMap, input.assignments[0]?.wells ?? assigned.changedWells);
         setStep("plateMap");
         liveStateRef.current = { ...liveStateRef.current, step: "plateMap" };
         const validation = validatePlateMap(assigned.plateMap);
@@ -728,6 +747,7 @@ export function App() {
             <PlateMapEditor
               plateMap={plateMap}
               onPlateMapChange={commitPlateMap}
+              sidebarSyncTarget={plateMapSidebarSyncTarget}
               actions={(
                 <>
                   <button className="secondary-button" type="button" onClick={() => setStep("wells")}>Back to wells</button>

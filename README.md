@@ -1,51 +1,55 @@
 # AssayLens
 
-AssayLens is a browser-only research workflow for exploratory image analysis of XTT 96-well plates and agar endpoint spot assays. The XTT workflow reports **image-derived relative metabolic activity** from plate photographs. It is not a calibrated plate-reader absorbance measurement, a direct viable-cell count, or a validated MIC/efficacy determination.
+[Live site](https://jivishov.github.io/assaylens/) · Browser-only exploratory image analysis for XTT 96-well plates and agar endpoint spot assays.
 
-Live site: https://jivishov.github.io/assaylens/
+AssayLens turns a confirmed plate photograph into **image-derived relative metabolic activity** and provides a visible plate map, explicit control assignment, reproducible exports, and a narrow WebMCP workflow for browser agents.
 
-## WebMCP Challenge extension
+> **Scientific scope:** AssayLens is not a calibrated plate-reader absorbance measurement, a direct viable-cell count, or a validated MIC or efficacy determination. Human review of image quality, geometry, controls, and QC remains required.
 
-Pre-WebMCP baseline: `db38fd6e78152d7439083588fdfbf9a49aa2fb3c`.
+## About
 
-The pre-existing application already contained image loading/camera capture, plate geometry confirmation, a visible 96-well map, serial-dilution logic, deterministic plate validation, worker-based XTT/agar image analysis, result visualization, and exports.
+- XTT 96-well workflow with image upload/capture, manual or assisted geometry confirmation, well-level QC, explicit normalization controls, and exploratory dose-response review.
+- Agar endpoint spot workflow with visible spot mapping and image-derived analysis.
+- Browser-local workflow: plate images, raw pixels, API keys, and local paths are not sent through WebMCP tools.
+- React, TypeScript, Vite, Vitest, and browser workers; no assay-analysis backend is required.
 
-The WebMCP extension adds a narrow agent-assisted XTT workflow on the **same React state and scientific algorithms** used by the visible application:
+## WebMCP: five page-owned tools
 
-- `inspect_xtt_workflow` — read workflow state, validation, analysis blockers/readiness, concise results, and scientific limitations.
-- `configure_xtt_series` — atomically configure one horizontal serial dilution with adjacent biological-replicate rows.
-- `assign_xtt_controls` — atomically assign explicit XTT control roles and normalization groups.
-- `run_xtt_analysis` — run the existing image-analysis worker and return only after it completes or fails.
-- `focus_xtt_review` — deterministically focus the result that most needs human QC review.
+AssayLens registers these tools only when the browser exposes `document.modelContext.registerTool`. The normal UI remains fully usable when WebMCP is unavailable.
 
-The extension does **not** add combination pharmacology, synergy scoring, docking, protein structures, a backend, a chatbot, or automatic efficacy/mechanism conclusions.
+| Tool | Purpose | State effect |
+|---|---|---|
+| `inspect_xtt_workflow` | Inspect XTT readiness, plate validation, concise results, and fixed scientific limitations. | Read only |
+| `configure_xtt_series` | Atomically configure one horizontal, leftward or rightward serial dilution with adjacent replicate rows. | Updates the plate map and invalidates stale analysis |
+| `assign_xtt_controls` | Atomically assign explicit XTT controls and normalization groups. | Updates the plate map and invalidates stale analysis |
+| `run_xtt_analysis` | Run the existing exploratory XTT image-analysis worker once all readiness checks pass. | Stores the result and opens Analysis |
+| `focus_xtt_review` | Focus the deterministic highest-priority QC item or a named series for human review. | Visible review focus only |
 
-Tool outputs are intentionally bounded. Lists such as blockers, warnings, wells, and result series report their total count and whether the returned list was truncated. Raw pixels, browser file objects, API keys, local paths, and complete project files are never returned through site tools.
+All tool schemas reject unknown fields, runtime inputs are validated again with Zod, and structured outputs are deliberately bounded. Tools do not return raw pixels, browser file objects, API keys, local paths, or complete project files.
 
-## Synthetic WebMCP demo
+### Plate map and visible editor synchronization
 
-1. Open the live AssayLens site in a WebMCP-capable browser/agent.
-2. On the Image screen choose **Load WebMCP demo**. This creates a deterministic synthetic plate image using the same plate-grid geometry code as analysis, installs preconfirmed geometry, and leaves the plate map empty so agent edits are visible.
-3. Use this prompt:
+WebMCP mutations and the visible plate editor share the same React state. Configuring a series or controls through a tool updates the plate map, Selection panel, and Serial dilution panel together. Clicking a mapped well also updates Selection with that well's exact role, compound, concentration, unit, normalization group, and replicate identifiers.
 
-> Use only the AssayLens site tools to configure the loaded synthetic XTT demo. Create an eight-dose two-fold concentration series for "Demo Extract A" against "Test organism," starting at A1 with 128 ug/mL and decreasing to the right. Use two adjacent replicate rows and normalization group "Demo-1." Assign H1 and H2 as growth controls and H3 and H4 as reagent blanks for the same group. Inspect the workflow, run the XTT analysis when ready, and focus the result with the highest QC-review priority. Explain the QC issue and the exploratory measurement limit only; do not make efficacy or mechanism claims.
+For a mapped sample well, Serial dilution preserves the genuine series source (for example, a leftward series can start at F10 with 500 ug/mL) while displaying the clicked well's current dose as context. This prevents a low-dose well from being mistaken for the source concentration when the series is edited again.
 
-Expected practical sequence: `inspect_xtt_workflow` → `configure_xtt_series` → `assign_xtt_controls` → `inspect_xtt_workflow` → `run_xtt_analysis` → `focus_xtt_review`.
+## Try the synthetic WebMCP demo
 
-The tools are independently valid and do not hard-code that sequence.
+1. Open the [live site](https://jivishov.github.io/assaylens/) in a WebMCP-capable browser or agent.
+2. On the Image screen, choose **Load WebMCP demo**. It creates a deterministic synthetic fixture using the same grid geometry as analysis and starts with an empty map.
+3. Ask the agent to configure a horizontal dilution, assign growth controls and reagent blanks for the same normalization group, inspect readiness, run analysis, and focus the highest-priority QC review item.
 
-## Scientific guardrails
+The tools are individually valid and do not hard-code a prescribed sequence. Real image loading and geometry confirmation remain human-controlled.
 
-All WebMCP result-related tools preserve these limitations:
+## Guardrails
 
-- Claim level: exploratory.
-- Measurement: image-derived relative metabolic activity.
-- Not a calibrated plate-reader absorbance measurement.
-- Not a direct viable-cell count.
-- Not a validated MIC or efficacy determination.
-- Human review of image quality, geometry, controls, and QC remains required.
+- Claim level: **exploratory**.
+- Measurement: **image-derived relative metabolic activity**.
+- No automatic efficacy, mechanism, clinical, or validated-MIC conclusions.
+- Image QC, geometry, controls, and excluded-well review remain visible and require human judgment.
+- Any plate-map mutation invalidates a previous result before the next analysis.
 
-Image loading and geometry confirmation remain human-controlled for real experiments. The synthetic challenge fixture is explicitly disclosed and does not change scientific thresholds or analysis algorithms.
+See [docs/WEBMCP.md](docs/WEBMCP.md) for tool contracts, data boundaries, QC-review priority, scientific constraints, and challenge-specific implementation notes.
 
 ## Local development
 
@@ -57,10 +61,8 @@ npm run build
 npm run dev
 ```
 
-`package-lock.json` is committed and CI uses `npm ci`. `webmcp-types` supplies the ambient TypeScript definitions for `document.modelContext`. In browsers where WebMCP is unavailable, registration is skipped and the normal AssayLens UI continues to function.
+`package-lock.json` is committed. Continuous integration runs `npm ci`, type checking, Vitest, and a production build before GitHub Pages deployment.
 
-## Architecture
+## License
 
-See [`docs/WEBMCP.md`](docs/WEBMCP.md) for the bridge architecture, tool contracts, guardrails, fidelity constraints, and challenge-scope notes.
-
-The implementation plan treated an MIT license as optional and conditional on an explicit owner licensing decision. This repository therefore does not assign a license as part of the WebMCP extension.
+Released under the [MIT License](LICENSE).

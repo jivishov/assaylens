@@ -1,6 +1,6 @@
 import { ChevronDown, ChevronRight, Clipboard, Download, Redo2, Save, Undo2, Upload, Wand2 } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { COLUMNS, ROWS, ROW_LABELS } from "../core/geometry/plateGrid";
 import { parsePlateMapCsv, plateMapToCsv } from "../core/io/csv";
 import { downloadText } from "../core/io/projectFile";
@@ -23,12 +23,18 @@ import {
   type PlateMapCell,
   type WellRole
 } from "../core/plateMap/plateMapTypes";
+import {
+  derivePlateMapHorizontalSampleSeries,
+  derivePlateMapSidebarSync,
+  type PlateMapSidebarSyncTarget
+} from "../core/plateMap/plateMapSidebarSync";
 import { validatePlateMap } from "../core/plateMap/plateMapValidation";
 import { SerialDilutionWizard } from "./SerialDilutionWizard";
 
 type PlateMapEditorProps = {
   plateMap: PlateMapCell[];
   onPlateMapChange: (plateMap: PlateMapCell[]) => void;
+  sidebarSyncTarget?: PlateMapSidebarSyncTarget;
   actions?: ReactNode;
 };
 
@@ -57,7 +63,7 @@ type CellPopoverState = {
   source: CellPopoverSource;
 };
 
-export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMapEditorProps) {
+export function PlateMapEditor({ plateMap, onPlateMapChange, sidebarSyncTarget, actions }: PlateMapEditorProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const hoverTimerRef = useRef<ReturnType<typeof window.setTimeout> | undefined>(undefined);
   const hoverTargetKeyRef = useRef<string | null>(null);
@@ -85,6 +91,10 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
     csvTemplates: true
   });
   const validation = useMemo(() => validatePlateMap(plateMap), [plateMap]);
+  const sidebarSync = useMemo(
+    () => derivePlateMapSidebarSync(plateMap, { preferredWells: sidebarSyncTarget?.preferredWells }),
+    [plateMap, sidebarSyncTarget]
+  );
   const roleAcceptsMetadata = roleAcceptsAssignmentMetadata(role);
   const roleAcceptsGroup = roleAcceptsNormalizationGroup(role);
   const roleAcceptsDose = roleAcceptsConcentration(role);
@@ -101,6 +111,29 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
   const selectedRows = [...new Set(selectedCells.map((cell) => cell.row))].sort((a, b) => a - b);
   const selectedCols = [...new Set(selectedCells.map((cell) => cell.col))].sort((a, b) => a - b);
   const startCell = sortedSelectedCells[0] ?? { row: 0, col: 0 };
+  const selectedCell = selectedCells.length === 1 ? selectedCells[0] : undefined;
+  const selectedSeries = useMemo(
+    () =>
+      selectedCell?.role === "sample"
+        ? derivePlateMapHorizontalSampleSeries(plateMap, [selectedCell.well])
+        : undefined,
+    [plateMap, selectedCell]
+  );
+  const synchronizedSeries = useMemo(
+    () =>
+      selectedSeries || selectedCells.length <= 1
+        ? undefined
+        : derivePlateMapHorizontalSampleSeries(plateMap, sidebarSyncTarget?.preferredWells),
+    [plateMap, selectedCells.length, selectedSeries, sidebarSyncTarget?.preferredWells]
+  );
+  const serialSeries = selectedSeries ?? synchronizedSeries;
+  const serialRows = serialSeries ? [...new Set(serialSeries.cells.map((cell) => cell.row))].sort((a, b) => a - b) : selectedRows;
+  const serialCols = serialSeries ? [...new Set(serialSeries.cells.map((cell) => cell.col))].sort((a, b) => a - b) : selectedCols;
+  const serialStartCell = serialSeries?.startCell ?? startCell;
+  const selectedWellForSerial =
+    selectedCell?.role === "sample" && typeof selectedCell.concentration === "number" && Number.isFinite(selectedCell.concentration)
+      ? { well: selectedCell.well, concentration: selectedCell.concentration, unit: selectedCell.unit }
+      : undefined;
   const templateNames = useMemo(() => Object.keys(templates).sort((a, b) => a.localeCompare(b)), [templates]);
 
   const clearPopoverTimer = useCallback(() => {
@@ -169,7 +202,38 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
     [clearPopoverTimer, showPopover]
   );
 
+  const syncSelectionPanelToCell = useCallback((cell: PlateMapCell) => {
+    setRole(cell.role);
+    setCompoundId(cell.compoundId);
+    setSampleId(cell.sampleId);
+    setConcentration(Number.isFinite(cell.concentration) ? String(cell.concentration) : "");
+    setUnit(cell.unit);
+    setNormalizationGroupId(cell.normalizationGroupId);
+    setBiologicalReplicateId(cell.biologicalReplicateId);
+    setTechnicalReplicateId(cell.technicalReplicateId);
+    setUsesVehicleControl(Boolean(cell.usesVehicleControl));
+    setError("");
+  }, []);
+
   useEffect(() => hidePopover(), [hidePopover, plateMap]);
+
+  useLayoutEffect(() => {
+    if (!sidebarSync) {
+      return;
+    }
+    const values = sidebarSync.selection;
+    setSelected(new Set(sidebarSync.selectedKeys));
+    setRole(values.role);
+    setCompoundId(values.compoundId);
+    setSampleId(values.sampleId);
+    setConcentration(values.concentration);
+    setUnit(values.unit);
+    setNormalizationGroupId(values.normalizationGroupId);
+    setBiologicalReplicateId(values.biologicalReplicateId);
+    setTechnicalReplicateId(values.technicalReplicateId);
+    setUsesVehicleControl(values.usesVehicleControl);
+    setError("");
+  }, [sidebarSync, sidebarSyncTarget?.revision]);
 
   useEffect(() => {
     return () => clearPopoverTimer();
@@ -417,6 +481,7 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
                       draggingRef.current = true;
                       hidePopover();
                       setSelected(new Set([key]));
+                      syncSelectionPanelToCell(cell);
                     }}
                     onMouseEnter={(event) => {
                       if (draggingRef.current) {
@@ -541,10 +606,14 @@ export function PlateMapEditor({ plateMap, onPlateMapChange, actions }: PlateMap
         >
           <SerialDilutionWizard
             plateMap={plateMap}
-            selectedRows={selectedRows}
-            selectedCols={selectedCols}
-            startCell={{ row: startCell.row, col: startCell.col }}
+            selectedRows={serialRows}
+            selectedCols={serialCols}
+            startCell={{ row: serialStartCell.row, col: serialStartCell.col }}
             onApply={commit}
+            syncValues={serialSeries?.values ?? sidebarSync?.serial}
+            syncRevision={sidebarSyncTarget?.revision}
+            selectedWell={selectedWellForSerial}
+            seriesStartWell={serialSeries?.startCell.well}
           />
         </CollapsiblePanel>
         <CollapsiblePanel

@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { applySerialDilution, type DilutionDirection } from "../core/plateMap/serialDilution";
+import type { SerialDilutionSidebarValues } from "../core/plateMap/plateMapSidebarSync";
 import type { PlateMapCell } from "../core/plateMap/plateMapTypes";
 
 type SerialDilutionWizardProps = {
@@ -9,9 +10,23 @@ type SerialDilutionWizardProps = {
   selectedCols: number[];
   startCell: { row: number; col: number };
   onApply: (plateMap: PlateMapCell[]) => void;
+  syncValues?: SerialDilutionSidebarValues;
+  syncRevision?: number;
+  selectedWell?: { well: string; concentration: number; unit: string };
+  seriesStartWell?: string;
 };
 
-export function SerialDilutionWizard({ plateMap, selectedRows, selectedCols, startCell, onApply }: SerialDilutionWizardProps) {
+export function SerialDilutionWizard({
+  plateMap,
+  selectedRows,
+  selectedCols,
+  startCell,
+  onApply,
+  syncValues,
+  syncRevision,
+  selectedWell,
+  seriesStartWell
+}: SerialDilutionWizardProps) {
   const [compoundId, setCompoundId] = useState("Compound X");
   const [sampleId, setSampleId] = useState("Sample 1");
   const [startConcentration, setStartConcentration] = useState(128);
@@ -22,6 +37,22 @@ export function SerialDilutionWizard({ plateMap, selectedRows, selectedCols, sta
   const [biologicalReplicatePrefix, setBiologicalReplicatePrefix] = useState("Bio");
   const [direction, setDirection] = useState<DilutionDirection>("right");
   const [error, setError] = useState("");
+
+  useLayoutEffect(() => {
+    if (!syncValues) {
+      return;
+    }
+    setCompoundId(syncValues.compoundId);
+    setSampleId(syncValues.sampleId);
+    setStartConcentration(syncValues.startConcentration);
+    setDilutionFactor(syncValues.dilutionFactor);
+    setSteps(syncValues.steps);
+    setUnit(syncValues.unit);
+    setNormalizationGroupId(syncValues.normalizationGroupId);
+    setBiologicalReplicatePrefix(syncValues.biologicalReplicatePrefix);
+    setDirection(syncValues.direction);
+    setError("");
+  }, [syncRevision, syncValues]);
 
   function apply() {
     setError("");
@@ -50,6 +81,18 @@ export function SerialDilutionWizard({ plateMap, selectedRows, selectedCols, sta
 
   return (
     <>
+      {selectedWell && (
+        <p className="serial-selection-context">
+          Selected well <strong>{selectedWell.well}</strong>: {selectedWell.concentration} {selectedWell.unit}.{" "}
+          {seriesStartWell && seriesStartWell !== selectedWell.well ? (
+            <>
+              Series start: <strong>{seriesStartWell}</strong> at {startConcentration} {unit}.
+            </>
+          ) : (
+            <>This is the series start dose.</>
+          )}
+        </p>
+      )}
       <div className="form-grid two">
         <label>
           <span>Compound ID</span>

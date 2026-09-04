@@ -43,6 +43,12 @@ All object input schemas set `additionalProperties: false`. Runtime inputs are p
 
 Tool outputs are deliberately concise. Blockers, warnings, changed wells, configured series, concentrations, excluded wells, and result-series summaries are capped. Capped collections include `count` and `truncated` metadata. Site tools never return raw pixels, `ImageData`, `ImageBitmap`, `File`, `Blob`, API keys, local file paths, or complete project files.
 
+## Visible editor synchronization
+
+WebMCP plate-map mutations commit through the same React state used by the visible editor. After a tool configures a series or assigns controls, the affected map cells, Selection panel, and Serial dilution panel are synchronized from the committed map rather than from stale draft values.
+
+Selecting an individual mapped well in the visible plate updates Selection with that well's exact assignment. For a recognized horizontal sample series, the Serial dilution panel preserves the true high-dose source and replicate geometry while displaying the clicked well's current dose as context. This prevents a lower-dose well from accidentally becoming the source when the series is edited again.
+
 ## Fidelity constraints
 
 - Horizontal dilution only. The existing helper derives biological replicate IDs from rows, so vertical dilution is intentionally not exposed through WebMCP.

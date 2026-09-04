@@ -15,7 +15,13 @@ export function classifyPixel(r: number, g: number, b: number, a = 255): PixelCl
   const darkArtifact = max <= 18;
 
   return {
-    valid: a >= 128 && !highlight && !darkArtifact && !clipped,
+    // A channel near zero is normal for strongly chromatic XTT wells (for
+    // example, a deep-red well can have very little blue). Retain that
+    // clipping diagnostic, but only exclude pixels that are actually
+    // unusable for the image signal: transparent, neutral-highlighted, or
+    // near-black. Otherwise the QC mask systematically removes the signal it
+    // is meant to measure.
+    valid: a >= 128 && !highlight && !darkArtifact,
     highlight,
     darkArtifact,
     clipped

@@ -1342,6 +1342,17 @@ textarea {
   font-size: 13px;
 }
 
+.serial-selection-context {
+  margin: 0;
+  padding: 8px 10px;
+  border-left: 3px solid var(--accent);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .form-grid {
   display: grid;
   gap: 10px;

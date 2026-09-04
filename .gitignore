@@ -1,0 +1,7 @@
+# Local dependencies and generated artifacts are reproducible from the tracked source.
+node_modules/
+dist/
+.playwright-mcp/
+coverage/
+.vite/
+*.tsbuildinfo
