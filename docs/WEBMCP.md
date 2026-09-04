@@ -108,11 +108,11 @@ WebMCP inspection, analysis, and review outputs carry a fixed context:
 - not a validated MIC or efficacy determination
 - human review of image quality, geometry, controls, and QC is required
 
-## Synthetic demo
+## Reviewer trial input
 
-`src/demo/xttWebMcpDemo.ts` creates a deterministic in-browser synthetic plate fixture. It uses the existing `buildGridHomography` and `generatePlateGrid` functions to position wells, installs preconfirmed/current geometry, and starts with an empty plate map. H1/H2 provide strong growth-control pixels, H3/H4 weak blank pixels, A1–A8 and B1–B8 form the demonstration dose series, and B5 contains a white glare region large enough to exercise the existing XTT ROI QC threshold without altering that threshold.
+The repository includes [`docs/images/sample-xtt-plate.jpg`](images/sample-xtt-plate.jpg) as a convenient real-image input for exercising the normal XTT workflow. Reviewers should load the photograph through the standard Image screen, confirm geometry manually or with the optional assisted workflow, configure a plate map appropriate to the intended test, and then use the WebMCP tools or visible controls against that same application state.
 
-The Image screen labels the fixture as synthetic. All resulting measurements remain exploratory.
+The supplied photograph is a trial input rather than a validated reference dataset; screenshots in the main README illustrate one example workflow and exploratory output rather than expected quantitative results.
 
 ## Pre-existing versus challenge work
 
@@ -125,7 +125,7 @@ The Image screen labels the fixture as synthetic. All resulting measurements rem
 | Plate-map validation | Structured inspection/readiness responses |
 | Worker-based XTT/agar analysis | Promise/cancellation wrapper shared with human run |
 | Dose-response and QC result views | Deterministic agent review focus |
-| Project/report exports | Synthetic no-key demo and challenge documentation |
+| Project/report exports | Challenge documentation and reviewer workflow guidance |
 
 ## Verification
 
