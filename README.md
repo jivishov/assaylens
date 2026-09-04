@@ -6,6 +6,31 @@ AssayLens turns a confirmed plate photograph into **image-derived relative metab
 
 > **Scientific scope:** AssayLens is not a calibrated plate-reader absorbance measurement, a direct viable-cell count, or a validated MIC or efficacy determination. Human review of image quality, geometry, controls, and QC remains required.
 
+## Workflow at a glance
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/well-anchoring.png" alt="AssayLens Well screen showing manual four-anchor alignment over a 96-well plate image." width="100%">
+      <br><sub>Confirm the plate geometry with four visible corner anchors before analysis.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/webmcp-plate-mapping.png" alt="AssayLens Plate Map screen with well roles, controls, a dilution series, and editable selection details." width="100%">
+      <br><sub>Map samples, controls, concentrations, replicates, and normalization groups explicitly.</sub>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <img src="docs/images/exploratory-analysis.png" alt="AssayLens Analysis screen with a plate heatmap, exploratory endpoint summary, and dose-response plot." width="100%">
+      <br><sub>Review image-derived relative metabolic activity, QC context, and the exploratory dose-response view.</sub>
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/sample-xtt-plate.jpg" alt="Example photograph of a 96-well XTT plate with colored wells." width="100%">
+      <br><sub>Example source plate photograph. Image color alone is not a quantitative or clinical conclusion.</sub>
+    </td>
+  </tr>
+</table>
+
 ## About
 
 - XTT 96-well workflow with image upload/capture, manual or assisted geometry confirmation, well-level QC, explicit normalization controls, and exploratory dose-response review.
